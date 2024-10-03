@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In</title>
+    <style>
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Sign In</h1>
+    <form action="/login" method="post">
+        Username: <input type="text" name="username" required><br>
+        Password: <input type="password" name="password" required><br>
+        <div id="error-message" class="error" style="display: none;"></div>
+        <button type="submit">Sign In</button>
+    </form>
+    <p>Not registered? <a href="/registration.html">Register here</a></p>
+
+    <script>
+        // Check if there's an error message in the URL query
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorMessage = urlParams.get('error');
+        
+        if (errorMessage) {
+            document.getElementById('error-message').textContent = errorMessage;
+            document.getElementById('error-message').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
