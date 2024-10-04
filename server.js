@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');  // For handling cookies
 const path = require('path');
+const crypto = require('crypto');  // For generating random ballot IDs
 const db = require('./config/db');  // MySQL database connection
 require('dotenv').config();  // To load environment variables
 
@@ -110,6 +111,31 @@ function verifyJWT(req, res, next) {
     next();  // Continue to the next middleware or route handler
   });
 }
+
+// Generate a random 36-character ballot ID
+function generateBallotId() {
+  return crypto.randomUUID();  // Generates a 36-character UUID
+}
+
+// Handle ballot submission
+app.post('/api/submit_ballot', (req, res) => {
+  const ballot = req.body; // Expecting an array of candidate_id and rank
+  const ballotId = generateBallotId(); // Generate a unique ballot ID
+
+  const insertQuery = 'INSERT INTO ballots (ballot_id, candidate_id, rankno) VALUES ?';
+
+  const ballotValues = ballot.map(({ candidate_id, rank }) => [ballotId, candidate_id, rank]);
+
+  // Insert the ranked candidates into the ballots table
+  db.query(insertQuery, [ballotValues], (err, result) => {
+    if (err) {
+      console.error('Error inserting ballot:', err);
+      return res.status(500).json({ message: 'Error submitting ballot' });
+    }
+
+    res.status(200).json({ message: 'Ballot submitted successfully' });
+  });
+});
 
 // Apply the JWT verification middleware before serving the React app
 app.use(verifyJWT);

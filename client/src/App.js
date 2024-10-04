@@ -4,7 +4,7 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const App = () => {
   const [candidates, setCandidates] = useState([]);
-  const [rankedCandidates, setRankedCandidates] = useState([]); // New state for ranked candidates
+  const [rankedCandidates, setRankedCandidates] = useState([]); // State for ranked candidates
 
   // Fetch candidates from the backend
   useEffect(() => {
@@ -21,11 +21,9 @@ const App = () => {
   const handleOnDragEnd = (result) => {
     const { source, destination } = result;
 
-    // If there's no destination, return
     if (!destination) return;
 
     if (source.droppableId === 'candidates' && destination.droppableId === 'rankedCandidates') {
-      // Moving from candidates list to ranked candidates
       const items = Array.from(candidates);
       const [movedItem] = items.splice(source.index, 1);
       setCandidates(items);
@@ -34,12 +32,36 @@ const App = () => {
       rankedItems.splice(destination.index, 0, movedItem);
       setRankedCandidates(rankedItems);
     } else if (source.droppableId === 'rankedCandidates' && destination.droppableId === 'rankedCandidates') {
-      // Rearranging within the ranked candidates
       const rankedItems = Array.from(rankedCandidates);
       const [movedItem] = rankedItems.splice(source.index, 1);
       rankedItems.splice(destination.index, 0, movedItem);
       setRankedCandidates(rankedItems);
     }
+  };
+
+  // Handle submitting the ballot
+  const handleSubmitBallot = () => {
+    if (rankedCandidates.length === 0) {
+      alert("Please rank candidates before submitting.");
+      return;
+    }
+
+    // Prepare the data to send to the backend
+    const ballotData = rankedCandidates.map((candidate, index) => ({
+      candidate_id: candidate.id,
+      rank: index + 1 // Rank is based on the position in the array
+    }));
+
+    // Send the ranked candidates to the backend
+    axios.post('/api/submit_ballot', ballotData)
+      .then(() => {
+        alert("Ballot submitted successfully!");
+        setRankedCandidates([]); // Clear the ranked candidates after submission
+      })
+      .catch((error) => {
+        console.error("Error submitting ballot:", error);
+        alert("There was an error submitting your ballot.");
+      });
   };
 
   return (
@@ -116,6 +138,13 @@ const App = () => {
           </Droppable>
         </div>
       </DragDropContext>
+
+      {/* Submit Ballot Button */}
+      <div style={{ textAlign: 'center', marginTop: '20px' }}>
+        <button onClick={handleSubmitBallot} style={{ padding: '10px 20px', fontSize: '16px' }}>
+          Submit Ballot
+        </button>
+      </div>
     </div>
   );
 };

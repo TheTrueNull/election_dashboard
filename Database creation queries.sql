@@ -18,16 +18,10 @@ CREATE TABLE candidates (
 
 CREATE TABLE ballots (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    ballot_id CHAR(36) NOT NULL UNIQUE,  -- A unique identifier for the ballot (UUID)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE ballot_rankings (
-    id INT AUTO_INCREMENT PRIMARY KEY,
     ballot_id CHAR(36) NOT NULL,
     candidate_id INT NOT NULL,
-    rankno INT NOT NULL,        
-    FOREIGN KEY (ballot_id) REFERENCES ballots(ballot_id),
+    rankno INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (candidate_id) REFERENCES candidates(id)
 );
 
