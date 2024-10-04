@@ -137,6 +137,99 @@ app.post('/api/submit_ballot', (req, res) => {
   });
 });
 
+// Function to calculate the winner using Instant Runoff Voting
+app.get('/api/calculate_winner', (req, res) => {
+  const getBallotsQuery = 'SELECT ballot_id, candidate_id, rankno FROM ballots ORDER BY ballot_id, rankno';
+  const getCandidatesQuery = 'SELECT * FROM candidates';
+
+  // First, fetch the candidates
+  db.query(getCandidatesQuery, (err, candidateResults) => {
+    if (err) {
+      console.error('Error fetching candidates:', err);
+      return res.status(500).json({ message: 'Error fetching candidates' });
+    }
+
+    // Now fetch the ballots
+    db.query(getBallotsQuery, (err, ballotResults) => {
+      if (err) {
+        console.error('Error fetching ballots:', err);
+        return res.status(500).json({ message: 'Error fetching ballots' });
+      }
+
+      // Process ballots by grouping by ballot_id
+      const ballots = {};
+      ballotResults.forEach(row => {
+        if (!ballots[row.ballot_id]) {
+          ballots[row.ballot_id] = [];
+        }
+        ballots[row.ballot_id].push({ candidate_id: row.candidate_id, rankno: row.rankno });
+      });
+
+      // Perform the Instant Runoff Voting algorithm
+      const irvWinner = calculateIRVWinner(ballots, candidateResults);  // Pass candidates to IRV function
+
+      if (irvWinner) {
+        res.status(200).json({ winner: irvWinner.name });
+      } else {
+        res.status(500).json({ message: 'No winner could be determined' });
+      }
+    });
+  });
+});
+
+// IRV Algorithm
+function calculateIRVWinner(ballots, candidates) {
+  const candidateIds = candidates.map(candidate => candidate.id);
+  let candidateVotes = {};
+
+  // Initialize vote counts
+  candidateIds.forEach(id => {
+    candidateVotes[id] = 0;
+  });
+
+  // Count first-choice votes
+  Object.values(ballots).forEach(ballot => {
+    const firstChoice = ballot.find(b => candidateIds.includes(b.candidate_id));
+    if (firstChoice) {
+      candidateVotes[firstChoice.candidate_id]++;
+    }
+  });
+
+  // Instant runoff voting logic
+  while (true) {
+    // Check for a candidate with a majority
+    const totalVotes = Object.values(candidateVotes).reduce((a, b) => a + b, 0);
+    for (const candidateId in candidateVotes) {
+      if (candidateVotes[candidateId] > totalVotes / 2) {
+        return candidates.find(c => c.id === parseInt(candidateId));
+      }
+    }
+
+    // Find the candidate with the fewest votes
+    const minVotes = Math.min(...Object.values(candidateVotes));
+    const candidatesWithMinVotes = Object.keys(candidateVotes).filter(id => candidateVotes[id] === minVotes);
+
+    if (candidatesWithMinVotes.length === candidateIds.length) {
+      return null; // No winner if all remaining candidates are tied
+    }
+
+    // Eliminate the candidate(s) with the fewest votes
+    candidatesWithMinVotes.forEach(id => {
+      delete candidateVotes[id];
+    });
+
+    // Transfer votes to next choices
+    Object.values(ballots).forEach(ballot => {
+      const nextChoice = ballot.find(b => candidateVotes[b.candidate_id] !== undefined);
+      if (nextChoice) {
+        candidateVotes[nextChoice.candidate_id]++;
+      }
+    });
+  }
+}
+
+
+
 // Apply the JWT verification middleware before serving the React app
 app.use(verifyJWT);
 

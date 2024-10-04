@@ -5,6 +5,7 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 const App = () => {
   const [candidates, setCandidates] = useState([]);
   const [rankedCandidates, setRankedCandidates] = useState([]);
+  const [winner, setWinner] = useState(''); // State to store the election winner
 
   // Fetch candidates from the backend
   useEffect(() => {
@@ -21,20 +22,15 @@ const App = () => {
   const handleOnDragEnd = (result) => {
     const { source, destination } = result;
 
-    // If no destination, return
     if (!destination) return;
 
-    // Moving between lists
     if (source.droppableId !== destination.droppableId) {
       let sourceItems = source.droppableId === 'candidates' ? Array.from(candidates) : Array.from(rankedCandidates);
       let destinationItems = destination.droppableId === 'candidates' ? Array.from(candidates) : Array.from(rankedCandidates);
 
-      // Remove from source
       const [movedItem] = sourceItems.splice(source.index, 1);
-      // Add to destination
       destinationItems.splice(destination.index, 0, movedItem);
 
-      // Update the correct lists
       if (source.droppableId === 'candidates') {
         setCandidates(sourceItems);
         setRankedCandidates(destinationItems);
@@ -43,12 +39,10 @@ const App = () => {
         setCandidates(destinationItems);
       }
     } else {
-      // Reordering within the same list
       const items = source.droppableId === 'candidates' ? Array.from(candidates) : Array.from(rankedCandidates);
       const [movedItem] = items.splice(source.index, 1);
       items.splice(destination.index, 0, movedItem);
 
-      // Update the list
       if (source.droppableId === 'candidates') {
         setCandidates(items);
       } else {
@@ -69,7 +63,6 @@ const App = () => {
       rank: index + 1
     }));
 
-    // Send the ranked candidates to the backend
     axios.post('/api/submit_ballot', ballotData)
       .then(() => {
         alert("Ballot submitted successfully!");
@@ -81,12 +74,23 @@ const App = () => {
       });
   };
 
+  // Handle calculating the winner
+  const handleCalculateWinner = () => {
+    axios.get('/api/calculate_winner')
+      .then((response) => {
+        setWinner(response.data.winner);
+      })
+      .catch((error) => {
+        console.error("Error calculating the winner:", error);
+        alert("There was an error calculating the winner.");
+      });
+  };
+
   return (
     <div>
       <h1>Drag and Drop Candidates</h1>
       <DragDropContext onDragEnd={handleOnDragEnd}>
         <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-          {/* Candidates List Column */}
           <Droppable droppableId="candidates">
             {(provided) => (
               <div
@@ -120,7 +124,6 @@ const App = () => {
             )}
           </Droppable>
 
-          {/* Ranked Candidates Column */}
           <Droppable droppableId="rankedCandidates">
             {(provided) => (
               <div
@@ -156,12 +159,19 @@ const App = () => {
         </div>
       </DragDropContext>
 
-      {/* Submit Ballot Button */}
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button onClick={handleSubmitBallot} style={{ padding: '10px 20px', fontSize: '16px' }}>
+        <button onClick={handleSubmitBallot} style={{ padding: '10px 20px', fontSize: '16px', marginRight: '10px' }}>
           Submit Ballot
         </button>
+
+        {/* Button to calculate the winner */}
+        <button onClick={handleCalculateWinner} style={{ padding: '10px 20px', fontSize: '16px' }}>
+          Calculate Winner
+        </button>
       </div>
+
+      {/* Display the winner */}
+      {winner && <h2 style={{ marginTop: '20px', textAlign: 'center' }}>Winner: {winner}</h2>}
     </div>
   );
 };
