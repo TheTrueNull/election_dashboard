@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import AdminSettings from './AdminSettings'; // Import AdminSettings component
 
-const Dashboard = () => {
+const App = () => {
   const [candidates, setCandidates] = useState([]);
   const [rankedCandidates, setRankedCandidates] = useState([]);
   const [winner, setWinner] = useState(''); // State to store the election winner
@@ -90,22 +88,7 @@ const Dashboard = () => {
 
   return (
     <div>
-      <h1>Dashboard</h1>
-
-      <button
-        onClick={() => window.location.href = '/admin-settings'}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          padding: '10px 20px',
-          fontSize: '16px',
-          zIndex: 1000,
-        }}
-      >
-        Admin Settings
-      </button>
-
+      <h1>Drag and Drop Candidates</h1>
       <DragDropContext onDragEnd={handleOnDragEnd}>
         <div style={{ display: 'flex', justifyContent: 'space-around' }}>
           <Droppable droppableId="candidates">
@@ -181,24 +164,15 @@ const Dashboard = () => {
           Submit Ballot
         </button>
 
+        {/* Button to calculate the winner */}
         <button onClick={handleCalculateWinner} style={{ padding: '10px 20px', fontSize: '16px' }}>
           Calculate Winner
         </button>
       </div>
 
+      {/* Display the winner */}
       {winner && <h2 style={{ marginTop: '20px', textAlign: 'center' }}>Winner: {winner}</h2>}
     </div>
-  );
-};
-
-const App = () => {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/admin-settings" element={<AdminSettings />} />
-      </Routes>
-    </Router>
   );
 };
 

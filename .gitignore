@@ -28,5 +28,8 @@ node_modules/
 # The build folder (as your partners will run the build locally)
 client/build/
 
+#db setup fro local development 
+config/db.js
+
 # Environment variables
 .env

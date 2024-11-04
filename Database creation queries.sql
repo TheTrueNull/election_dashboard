@@ -7,11 +7,15 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     has_voted BOOLEAN DEFAULT FALSE,  -- Indicates whether the user has voted
+    is_candidate BOOLEAN DEFAULT FALSE,  -- Indicates whether the user is a candidate
+    role_id INT,  -- Foreign key to the roles table
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_changed TIMESTAMP DEFAULT CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
     created_by VARCHAR(255),
-    changed_by VARCHAR(255)
+    changed_by VARCHAR(255),
+    FOREIGN KEY (role_id) REFERENCES roles(id)
 );
+
 CREATE TRIGGER created_by_users
 BEFORE INSERT ON users
 FOR EACH ROW
@@ -21,6 +25,19 @@ CREATE TRIGGER changed_by_users
 BEFORE UPDATE ON users
 FOR EACH ROW
 SET NEW.changed_by = USER();
+
+
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(255) NOT NULL UNIQUE,
+    description VARCHAR(255)
+);
+
+INSERT INTO roles (role_name, description) VALUES
+('administrator', 'Has full access to manage users, candidates, and election process'),
+('voter', 'Can vote in the election'),
+('viewer', 'Can view election results');
+
 
 CREATE TABLE candidates (
     id INT AUTO_INCREMENT PRIMARY KEY,

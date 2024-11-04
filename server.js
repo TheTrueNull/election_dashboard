@@ -228,6 +228,24 @@ function calculateIRVWinner(ballots, candidates) {
   }
 }
 
+// Middleware to check if the user is an admin
+function isAdmin(req, res, next) {
+  const { role } = req.user;  // Assuming role is available in req.user after login
+  if (role === 'administrator') {
+    return next();
+  } else {
+    return res.status(403).json({ message: 'Access denied. Admins only.' });
+  }
+}
+
+// Fetch all users (Admin only)
+app.get('/api/admin/users', verifyJWT, isAdmin, (req, res) => {
+  const query = 'SELECT id, username, email, is_candidate FROM users';
+  db.query(query, (err, results) => {
+    if (err) throw err;
+    res.json(results);
+  });
+});
 
 
 // Apply the JWT verification middleware before serving the React app
