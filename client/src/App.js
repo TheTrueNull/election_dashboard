@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import AdminSettings from './AdminSettings'; // Import AdminSettings component
 
@@ -8,6 +8,7 @@ const Dashboard = () => {
   const [candidates, setCandidates] = useState([]);
   const [rankedCandidates, setRankedCandidates] = useState([]);
   const [winner, setWinner] = useState(''); // State to store the election winner
+  const navigate = useNavigate();
 
   // Fetch candidates from the backend
   useEffect(() => {
@@ -19,6 +20,13 @@ const Dashboard = () => {
         console.error("There was an error fetching the candidates!", error);
       });
   }, []);
+
+  // Logout function to clear tokens and redirect to signin page
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    navigate('/signin.html');
+  };
 
   // Handle when the drag ends
   const handleOnDragEnd = (result) => {
@@ -92,19 +100,33 @@ const Dashboard = () => {
     <div>
       <h1>Dashboard</h1>
 
-      <button
-        onClick={() => window.location.href = '/admin-settings'}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          padding: '10px 20px',
-          fontSize: '16px',
-          zIndex: 1000,
-        }}
-      >
-        Admin Settings
-      </button>
+      {/* Container for Logout and Admin Settings buttons */}
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        display: 'flex',
+        gap: '10px',
+      }}>
+        <button
+          onClick={() => navigate('/admin-settings')}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+          }}
+        >
+          Admin Settings
+        </button>
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+          }}
+        >
+          Logout
+        </button>
+      </div>
 
       <DragDropContext onDragEnd={handleOnDragEnd}>
         <div style={{ display: 'flex', justifyContent: 'space-around' }}>

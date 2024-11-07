@@ -95,6 +95,43 @@ app.get('/api/candidates', verifyJWT, (req, res) => {
   });
 });
 
+// Fetch all candidates for the Admin Settings page
+app.get('/api/admin/candidates', verifyJWT, isAdmin, (req, res) => {
+  const query = 'SELECT id, name, is_active FROM candidates';
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching candidates:', err);
+      return res.status(500).json({ message: 'Error fetching candidates' });
+    }
+    res.json(results);
+  });
+});
+
+// Update candidate active statuses in the candidates table
+app.post('/api/admin/update_candidates', verifyJWT, isAdmin, (req, res) => {
+  const updatedStatuses = req.body.updatedStatuses;
+
+  // Update each candidate's is_active status in the database
+  const queries = updatedStatuses.map(candidate => (
+    new Promise((resolve, reject) => {
+      const query = 'UPDATE candidates SET is_active = ? WHERE id = ?';
+      db.query(query, [candidate.is_active, candidate.id], (err, result) => {
+        if (err) reject(err);
+        resolve(result);
+      });
+    })
+  ));
+
+  Promise.all(queries)
+    .then(() => res.status(200).json({ message: 'Candidate statuses updated successfully' }))
+    .catch(error => {
+      console.error('Error updating candidate statuses:', error);
+      res.status(500).json({ message: 'Error updating candidate statuses' });
+    });
+});
+
+
+
 // JWT verification middleware
 function verifyJWT(req, res, next) {
   const token = req.cookies.token;
@@ -230,7 +267,7 @@ function calculateIRVWinner(ballots, candidates) {
 
 // Middleware to check if the user is an admin
 function isAdmin(req, res, next) {
-  const { role } = req.user;  // Assuming role is available in req.user after login
+  const { role } = req.user;  
   if (role === 'administrator') {
     return next();
   } else {

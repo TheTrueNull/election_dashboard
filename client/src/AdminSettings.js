@@ -1,64 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
-  const [users, setUsers] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const navigate = useNavigate();
 
-  // Fetch all users from the backend
+  // Fetch all candidates from the backend
   useEffect(() => {
-    axios.get('/api/admin/users')
+    axios.get('/api/admin/candidates')
       .then((response) => {
-        setUsers(response.data);
+        setCandidates(response.data);
       })
       .catch((error) => {
-        console.error('Error fetching users:', error);
+        console.error('Error fetching candidates:', error);
       });
   }, []);
 
-  // Handle toggling the candidate status
-  const handleCandidateToggle = (userId, isCandidate) => {
-    axios.post('/api/admin/update_candidate', { userId, isCandidate })
+  // Logout function
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    window.location.href = '/signin.html'; // Redirect directly to signin.html
+  };
+
+  // Handle checkbox change
+  const handleCheckboxChange = (candidateId) => {
+    setCandidates((prevCandidates) =>
+      prevCandidates.map((candidate) =>
+        candidate.id === candidateId ? { ...candidate, is_active: !candidate.is_active } : candidate
+      )
+    );
+  };
+
+  // Submit updated active statuses to the backend
+  const handleSubmit = () => {
+    const updatedStatuses = candidates.map(candidate => ({
+      id: candidate.id,
+      is_active: candidate.is_active
+    }));
+
+    axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
-        // Update the local state to reflect the candidate status
-        setUsers((prevUsers) =>
-          prevUsers.map((user) =>
-            user.id === userId ? { ...user, is_candidate: !isCandidate } : user
-          )
-        );
+        alert("Candidate statuses updated successfully!");
       })
       .catch((error) => {
-        console.error('Error updating candidate status:', error);
+        console.error('Error updating candidate statuses:', error);
+        alert("There was an error updating candidate statuses.");
       });
   };
 
   return (
     <div>
-      <h1>Admin Settings: Manage Candidates</h1>
+      <h1>Admin Settings: Manage Candidate Status</h1>
+
+      {/* Logout Button */}
+      <button
+        onClick={handleLogout}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '10px 20px',
+          fontSize: '16px',
+          zIndex: 1000,
+        }}
+      >
+        Logout
+      </button>
+
       <table>
         <thead>
           <tr>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Is Candidate</th>
-            <th>Action</th>
+            <th>Candidate Name</th>
+            <th>Active</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>{user.username}</td>
-              <td>{user.email}</td>
+          {candidates.map((candidate) => (
+            <tr key={candidate.id}>
+              <td>{candidate.name}</td>
               <td>
                 <input
                   type="checkbox"
-                  checked={user.is_candidate}
-                  onChange={() => handleCandidateToggle(user.id, user.is_candidate)}
+                  checked={candidate.is_active}
+                  onChange={() => handleCheckboxChange(candidate.id)}
                 />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <button onClick={handleSubmit} style={{ marginTop: '20px', padding: '10px 20px' }}>
+        Submit
+      </button>
     </div>
   );
 };
