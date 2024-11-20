@@ -74,36 +74,56 @@ app.post('/login', (req, res) => {
         return res.redirect('/signin.html?error=Invalid%20username%20or%20password');
       }
 
-      // Successful login: generate JWT
-      const token = jwt.sign({ id: user.id, username: user.username }, jwtSecret, { expiresIn: '1h' });
+      // Fetch role name
+      const roleQuery = 'SELECT role_name FROM roles WHERE id = ?';
+      db.query(roleQuery, [user.role_id], (err, roleResults) => {
+        if (err) throw err;
 
-      // Set the token as a cookie
-      res.cookie('token', token, { httpOnly: true });
+        const roleName = roleResults[0].role_name;
 
-      // Redirect to the React app (served from Express)
-      res.redirect('/');
+        // Successful login: generate JWT with role
+        const token = jwt.sign(
+          { id: user.id, username: user.username, role: roleName },
+          jwtSecret,
+          { expiresIn: '1h' }
+        );
+
+        // Set the token as a cookie
+        res.cookie('token', token, { httpOnly: true, path: '/' });
+
+        // Redirect to the React app (served from Express)
+        res.redirect('/');
+      });
     });
   });
 });
 
-// Fetch candidates from the database
-app.get('/api/candidates', verifyJWT, (req, res) => {
-  const query = 'SELECT * FROM candidates';
+// Fetch active candidates for the dashboard
+app.get('/api/candidates', (req, res) => {
+  const query = 'SELECT id, name FROM candidates WHERE active = TRUE';
   db.query(query, (err, results) => {
-    if (err) throw err;
+    if (err) {
+      console.error('Error fetching active candidates:', err);
+      return res.status(500).json({ message: 'Error fetching candidates' });
+    }
     res.json(results);
   });
 });
 
 // Fetch all candidates for the Admin Settings page
 app.get('/api/admin/candidates', verifyJWT, isAdmin, (req, res) => {
-  const query = 'SELECT id, name, is_active FROM candidates';
+  const query = 'SELECT id, name, active FROM candidates';
   db.query(query, (err, results) => {
     if (err) {
       console.error('Error fetching candidates:', err);
       return res.status(500).json({ message: 'Error fetching candidates' });
     }
-    res.json(results);
+    // Map 'active' to 'is_active' to match frontend expectations
+    const candidates = results.map(candidate => ({
+      ...candidate,
+      is_active: candidate.active,  // Map 'active' to 'is_active'
+    }));
+    res.json(candidates);
   });
 });
 
@@ -111,10 +131,10 @@ app.get('/api/admin/candidates', verifyJWT, isAdmin, (req, res) => {
 app.post('/api/admin/update_candidates', verifyJWT, isAdmin, (req, res) => {
   const updatedStatuses = req.body.updatedStatuses;
 
-  // Update each candidate's is_active status in the database
+  // Update each candidate's active status in the database
   const queries = updatedStatuses.map(candidate => (
     new Promise((resolve, reject) => {
-      const query = 'UPDATE candidates SET is_active = ? WHERE id = ?';
+      const query = 'UPDATE candidates SET active = ? WHERE id = ?';
       db.query(query, [candidate.is_active, candidate.id], (err, result) => {
         if (err) reject(err);
         resolve(result);
@@ -129,6 +149,7 @@ app.post('/api/admin/update_candidates', verifyJWT, isAdmin, (req, res) => {
       res.status(500).json({ message: 'Error updating candidate statuses' });
     });
 });
+
 
 
 
@@ -267,14 +288,13 @@ function calculateIRVWinner(ballots, candidates) {
 
 // Middleware to check if the user is an admin
 function isAdmin(req, res, next) {
-  const { role } = req.user;  
+  const { role } = req.user;  // Get role from the JWT token
   if (role === 'administrator') {
     return next();
   } else {
     return res.status(403).json({ message: 'Access denied. Admins only.' });
   }
 }
-
 // Fetch all users (Admin only)
 app.get('/api/admin/users', verifyJWT, isAdmin, (req, res) => {
   const query = 'SELECT id, username, email, is_candidate FROM users';

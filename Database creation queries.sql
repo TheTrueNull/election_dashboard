@@ -1,5 +1,15 @@
 /*USE THESE TO CREATE THE SERVER THAN ADD A USER IN THE ADMINISTRATION TAB WITH ONLY INSERT AND SELECT PRIVALEGES*/
 
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(255) NOT NULL UNIQUE,
+    description VARCHAR(255)
+);
+
+INSERT INTO roles (role_name, description) VALUES
+('administrator', 'Has full access to manage users, candidates, and election process'),
+('voter', 'Can vote in the election'),
+('viewer', 'Can view election results');
 
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -7,7 +17,7 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     has_voted BOOLEAN DEFAULT FALSE,  -- Indicates whether the user has voted
-    
+    is_candidate BOOLEAN DEFAULT FALSE,  -- Indicates whether the user is a candidate
     role_id INT,  -- Foreign key to the roles table
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_changed TIMESTAMP DEFAULT CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
@@ -27,27 +37,21 @@ FOR EACH ROW
 SET NEW.changed_by = USER();
 
 
-CREATE TABLE roles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    role_name VARCHAR(255) NOT NULL UNIQUE,
-    description VARCHAR(255)
-);
-
-INSERT INTO roles (role_name, description) VALUES
-('administrator', 'Has full access to manage users, candidates, and election process'),
-('voter', 'Can vote in the election'),
-('viewer', 'Can view election results');
-
 
 CREATE TABLE candidates (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    active BOOLEAN DEFAULT TRUE,  -- Indicates whether the user is an active candidate
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_changed TIMESTAMP DEFAULT CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
     created_by VARCHAR(255),
-    changed_by VARCHAR(255)
+    changed_by VARCHAR(255),
+    active BOOLEAN DEFAULT TRUE
 );
+
+
+ALTER TABLE candidates
+ADD COLUMN active BOOLEAN DEFAULT TRUE;
+
 CREATE TRIGGER created_by_candidates
 BEFORE INSERT ON candidates
 FOR EACH ROW
@@ -80,11 +84,12 @@ BEFORE UPDATE ON ballots
 FOR EACH ROW
 SET NEW.changed_by = USER();
 
-/*
+
 drop table ballots;
 drop table candidates;
 drop table users;
-*/
+drop table roles;
+
 
 INSERT INTO candidates (name)
 VALUES 
@@ -98,3 +103,17 @@ VALUES
     ('Crooked McBawls'),
     ('Das Desonble'),
     ('Goo DePresident');
+    
+    
+select * from users;
+UPDATE users SET role_id = (
+  SELECT id FROM roles WHERE role_name = 'administrator'
+) WHERE username = 'testuser1';
+    
+select * from roles;
+select * from candidates;
+delete from candidates;
+delete from ballots;
+select * from ballots;
+
+select * from candidates;

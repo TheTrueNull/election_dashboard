@@ -55,19 +55,23 @@ const AdminSettings = () => {
       <h1>Admin Settings: Manage Candidate Status</h1>
 
       {/* Logout Button */}
-      <button
-        onClick={handleLogout}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          padding: '10px 20px',
-          fontSize: '16px',
-          zIndex: 1000,
-        }}
-      >
-        Logout
-      </button>
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        display: 'flex',
+        gap: '10px',
+      }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+          }}
+        >
+          Logout
+        </button>
+      </div>
 
       <table>
         <thead>
