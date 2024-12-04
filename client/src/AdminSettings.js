@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
+  const [selectedMethod, setSelectedMethod] = useState('Instant Runoff'); // Default to Instant Runoff
   const navigate = useNavigate();
 
   // Fetch all candidates from the backend
@@ -33,6 +34,11 @@ const AdminSettings = () => {
     );
   };
 
+  // Handle dropdown selection change
+  const handleMethodChange = (event) => {
+    setSelectedMethod(event.target.value);
+  };
+
   // Submit updated active statuses to the backend
   const handleSubmit = () => {
     const updatedStatuses = candidates.map(candidate => ({
@@ -42,12 +48,17 @@ const AdminSettings = () => {
 
     axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
-        alert("Candidate statuses updated successfully!");
+        alert(`Candidate statuses updated successfully! Selected method: ${selectedMethod}`);
       })
       .catch((error) => {
         console.error('Error updating candidate statuses:', error);
         alert("There was an error updating candidate statuses.");
       });
+  };
+
+  // Handle navigation back to the dashboard
+  const handleBackToDashboard = () => {
+    navigate('/');
   };
 
   return (
@@ -95,9 +106,32 @@ const AdminSettings = () => {
           ))}
         </tbody>
       </table>
-      <button onClick={handleSubmit} style={{ marginTop: '20px', padding: '10px 20px' }}>
-        Submit
-      </button>
+
+      {/* Dropdown menu */}
+      <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <label htmlFor="voting-method" style={{ fontSize: '16px', marginRight: '10px' }}>
+          Select Voting Method:
+        </label>
+        <select
+          id="voting-method"
+          value={selectedMethod}
+          onChange={handleMethodChange}
+          style={{ padding: '5px 10px', fontSize: '16px' }}
+        >
+          <option value="Instant Runoff">Instant Runoff</option>
+          <option value="Ranked Pairs">Ranked Pairs</option>
+        </select>
+      </div>
+
+      {/* Submit and Back to Dashboard Buttons */}
+      <div>
+        <button onClick={handleSubmit} style={{ padding: '10px 20px', fontSize: '16px', marginRight: '10px' }}>
+          Submit
+        </button>
+        <button onClick={handleBackToDashboard} style={{ padding: '10px 20px', fontSize: '16px' }}>
+          Back to Dashboard
+        </button>
+      </div>
     </div>
   );
 };
