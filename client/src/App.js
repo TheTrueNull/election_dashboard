@@ -1,16 +1,29 @@
+// App.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import AdminSettings from './AdminSettings'; // Import AdminSettings component
+import AdminSettings from './AdminSettings'; // Admin screen
 
 const Dashboard = () => {
   const [candidates, setCandidates] = useState([]);
   const [rankedCandidates, setRankedCandidates] = useState([]);
-  const [winner, setWinner] = useState(''); // State to store the election winner
+  const [winner, setWinner] = useState('');
+  const [roleId, setRoleId] = useState(null); // Track user role
   const navigate = useNavigate();
 
-  // Fetch candidates from the backend
+    // Check authentication & get user role
+    useEffect(() => {
+      axios.get('/api/user-role', { withCredentials: true })
+        .then((response) => {
+          setRoleId(response.data.role_id);
+        })
+        .catch(() => {
+          window.location.href = '/signin.html'; // Redirect to sign-in if unauthorized
+        });
+    }, []);
+
+  // Fetch candidates (active only) from /api/candidates
   useEffect(() => {
     axios.get('/api/candidates')
       .then((response) => {
@@ -21,35 +34,35 @@ const Dashboard = () => {
       });
   }, []);
 
-  // Logout function to clear tokens and redirect to signin page
+  // Logout function
   const handleLogout = () => {
     localStorage.removeItem('token');
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    navigate('/signin.html');
+    window.location.href = '/signin.html'; // Force a full reload to signin
   };
 
-  // Handle when the drag ends
+  // Drag and drop logic
   const handleOnDragEnd = (result) => {
     const { source, destination } = result;
-
     if (!destination) return;
 
     if (source.droppableId !== destination.droppableId) {
-      let sourceItems = source.droppableId === 'candidates' ? Array.from(candidates) : Array.from(rankedCandidates);
-      let destinationItems = destination.droppableId === 'candidates' ? Array.from(candidates) : Array.from(rankedCandidates);
+      let sourceItems = (source.droppableId === 'candidates') ? [...candidates] : [...rankedCandidates];
+      let destItems = (destination.droppableId === 'candidates') ? [...candidates] : [...rankedCandidates];
 
       const [movedItem] = sourceItems.splice(source.index, 1);
-      destinationItems.splice(destination.index, 0, movedItem);
+      destItems.splice(destination.index, 0, movedItem);
 
       if (source.droppableId === 'candidates') {
         setCandidates(sourceItems);
-        setRankedCandidates(destinationItems);
+        setRankedCandidates(destItems);
       } else {
+        setCandidates(destItems);
         setRankedCandidates(sourceItems);
-        setCandidates(destinationItems);
       }
     } else {
-      const items = source.droppableId === 'candidates' ? Array.from(candidates) : Array.from(rankedCandidates);
+      // Reordering in the same list
+      const items = (source.droppableId === 'candidates') ? [...candidates] : [...rankedCandidates];
       const [movedItem] = items.splice(source.index, 1);
       items.splice(destination.index, 0, movedItem);
 
@@ -61,13 +74,12 @@ const Dashboard = () => {
     }
   };
 
-  // Handle submitting the ballot
+  // Submit Ballot
   const handleSubmitBallot = () => {
     if (rankedCandidates.length === 0) {
       alert("Please rank candidates before submitting.");
       return;
     }
-
     const ballotData = rankedCandidates.map((candidate, index) => ({
       candidate_id: candidate.id,
       rank: index + 1
@@ -84,9 +96,15 @@ const Dashboard = () => {
       });
   };
 
-  // Handle calculating the winner
+  // Calculate Winner
   const handleCalculateWinner = () => {
-    axios.get('/api/calculate_winner')
+    // Determine selected method from localStorage
+    const method = localStorage.getItem('votingMethod') || 'Instant Runoff';
+    const endpoint = (method === 'Ranked Pairs')
+      ? '/api/calculate_winner_ranked_pairs'
+      : '/api/calculate_winner';
+
+    axios.get(endpoint)
       .then((response) => {
         setWinner(response.data.winner);
       })
@@ -100,29 +118,26 @@ const Dashboard = () => {
     <div>
       <h1>Dashboard</h1>
 
-      {/* Container for Logout and Admin Settings buttons */}
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        right: '20px',
-        display: 'flex',
-        gap: '10px',
-      }}>
-        <button
-          onClick={() => navigate('/admin-settings')}
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-          }}
+      <div
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          display: 'flex',
+          gap: '10px',
+        }}
         >
-          Admin Settings
-        </button>
+          {roleId === 1 && ( // Only show Admin Settings if user is an Admin
+            <button
+              onClick={() => navigate('/admin-settings')}
+              style={{ padding: '10px 20px', fontSize: '16px' }}
+            >
+              Admin Settings
+            </button>
+          )}
         <button
           onClick={handleLogout}
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-          }}
+          style={{ padding: '10px 20px', fontSize: '16px' }}
         >
           Logout
         </button>
@@ -130,6 +145,7 @@ const Dashboard = () => {
 
       <DragDropContext onDragEnd={handleOnDragEnd}>
         <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+          {/* Candidates */}
           <Droppable droppableId="candidates">
             {(provided) => (
               <div
@@ -138,8 +154,8 @@ const Dashboard = () => {
                 style={{ backgroundColor: '#e0e0e0', padding: '8px', width: '45%' }}
               >
                 <h2>All Candidates</h2>
-                {candidates.map(({ id, name }, index) => (
-                  <Draggable key={id} draggableId={id.toString()} index={index}>
+                {candidates.map((c, index) => (
+                  <Draggable key={c.id} draggableId={c.id.toString()} index={index}>
                     {(provided) => (
                       <div
                         ref={provided.innerRef}
@@ -153,7 +169,7 @@ const Dashboard = () => {
                           ...provided.draggableProps.style
                         }}
                       >
-                        {name}
+                        {c.name}
                       </div>
                     )}
                   </Draggable>
@@ -163,6 +179,7 @@ const Dashboard = () => {
             )}
           </Droppable>
 
+          {/* Ranked Candidates */}
           <Droppable droppableId="rankedCandidates">
             {(provided) => (
               <div
@@ -171,8 +188,8 @@ const Dashboard = () => {
                 style={{ backgroundColor: '#f7f7f7', padding: '8px', width: '45%' }}
               >
                 <h2>Ranked Candidates</h2>
-                {rankedCandidates.map(({ id, name }, index) => (
-                  <Draggable key={id} draggableId={id.toString()} index={index}>
+                {rankedCandidates.map((rc, index) => (
+                  <Draggable key={rc.id} draggableId={rc.id.toString()} index={index}>
                     {(provided) => (
                       <div
                         ref={provided.innerRef}
@@ -186,7 +203,7 @@ const Dashboard = () => {
                           ...provided.draggableProps.style
                         }}
                       >
-                        {name}
+                        {rc.name}
                       </div>
                     )}
                   </Draggable>
@@ -199,20 +216,30 @@ const Dashboard = () => {
       </DragDropContext>
 
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button onClick={handleSubmitBallot} style={{ padding: '10px 20px', fontSize: '16px', marginRight: '10px' }}>
+        <button
+          onClick={handleSubmitBallot}
+          style={{ padding: '10px 20px', fontSize: '16px', marginRight: '10px' }}
+        >
           Submit Ballot
         </button>
-
-        <button onClick={handleCalculateWinner} style={{ padding: '10px 20px', fontSize: '16px' }}>
+        <button
+          onClick={handleCalculateWinner}
+          style={{ padding: '10px 20px', fontSize: '16px' }}
+        >
           Calculate Winner
         </button>
       </div>
 
-      {winner && <h2 style={{ marginTop: '20px', textAlign: 'center' }}>Winner: {winner}</h2>}
+      {winner && (
+        <h2 style={{ marginTop: '20px', textAlign: 'center' }}>
+          Winner: {winner}
+        </h2>
+      )}
     </div>
   );
 };
 
+// The main App uses Router for navigation
 const App = () => {
   return (
     <Router>
