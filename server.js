@@ -151,7 +151,22 @@ app.post('/api/admin/update_candidates', verifyJWT, isAdmin, (req, res) => {
 });
 
 
+app.post('/api/admin/add_candidate', (req, res) => {
+  const { name, is_active } = req.body;
 
+  if (!name) {
+    return res.status(400).json({ message: 'Candidate name is required' });
+  }
+
+  const query = 'INSERT INTO candidates (name, active) VALUES (?, ?)';
+  db.query(query, [name, is_active ? 1 : 0], (err, result) => {
+    if (err) {
+      console.error('Error adding candidate:', err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    res.status(201).json({ message: 'Candidate added successfully', candidateId: result.insertId });
+  });
+});
 
 // JWT verification middleware
 function verifyJWT(req, res, next) {
