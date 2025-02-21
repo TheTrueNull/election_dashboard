@@ -84,13 +84,6 @@ BEFORE UPDATE ON ballots
 FOR EACH ROW
 SET NEW.changed_by = USER();
 
-
-drop table ballots;
-drop table candidates;
-drop table users;
-drop table roles;
-
-
 INSERT INTO candidates (name)
 VALUES 
     ('John Smith'),
@@ -105,15 +98,23 @@ VALUES
     ('Goo DePresident');
     
     
-select * from users;
+
 UPDATE users SET role_id = (
   SELECT id FROM roles WHERE role_name = 'administrator'
 ) WHERE username = 'testuser1';
-    
+
+
+ /*
+drop table ballots;
+drop table candidates;
+drop table users;
+drop table roles;
+ 
+ select * from users;   
 select * from roles;
 select * from candidates;
 delete from candidates;
 delete from ballots;
 select * from ballots;
 
-select * from candidates;
+select * from candidates;*/
