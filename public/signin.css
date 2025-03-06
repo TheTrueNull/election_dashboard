@@ -1,0 +1,72 @@
+body {
+    background-color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* create card */
+.card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px black;
+    width: 350px;
+    text-align: center;
+}
+
+/* centering form */
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* input fields */
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* sign in button */
+button {
+    background-color: red;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* hover effect for sign in button */
+button:hover {
+    background-color: rgb(192, 4, 4);
+}
+
+/* links */
+p {
+    margin-top: 15px;
+}
+
+a {
+    text-decoration: none;
+    color: #007BFF;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* error message styling */
+.error {
+    font-size: 14px;
+    color: red;
+    margin-top: 10px;
+}
