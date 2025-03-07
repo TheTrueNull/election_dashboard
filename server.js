@@ -33,7 +33,10 @@ app.post('/register_user', (req, res) => {
   // Check if the username or email already exists
   const checkQuery = 'SELECT * FROM users WHERE username = ? OR email = ?';
   db.query(checkQuery, [username, email], (err, results) => {
-    if (err) throw err;
+    if (err) {
+      console.error('Error checking user existence:', err);
+      return res.status(500).json({ message: 'Server error checking user existence' });
+    }
 
     if (results.length > 0) {
       return res.redirect('/registration.html?error=Username%20or%20email%20already%20exists');
@@ -41,11 +44,19 @@ app.post('/register_user', (req, res) => {
 
     // Hash the password before storing it
     bcrypt.hash(password, 10, (err, hash) => {
-      if (err) throw err;
+      if (err) {
+        console.error('Error hashing password:', err);
+        return res.status(500).json({ message: 'Server error hashing password' });
+      }
 
-      const insertQuery = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
+      // Insert new user with default role_id = 2 (Voter)
+      const insertQuery = 'INSERT INTO users (username, password, email, role_id) VALUES (?, ?, ?, 2)';
       db.query(insertQuery, [username, hash, email], (err, result) => {
-        if (err) throw err;
+        if (err) {
+          console.error('Error inserting new user:', err);
+          return res.status(500).json({ message: 'Error inserting new user' });
+        }
+
         res.redirect('/signin.html?message=Registration%20successful,%20please%20login');
       });
     });
@@ -167,6 +178,47 @@ app.post('/api/admin/add_candidate', (req, res) => {
     res.status(201).json({ message: 'Candidate added successfully', candidateId: result.insertId });
   });
 });
+
+// Delete candidates (Admin only)
+app.post('/api/admin/delete_candidates', verifyJWT, isAdmin, (req, res) => {
+  const { candidate_ids } = req.body;
+
+  if (!candidate_ids || candidate_ids.length === 0) {
+    return res.status(400).json({ message: 'No candidates selected for deletion' });
+  }
+
+  const query = 'DELETE FROM candidates WHERE id IN (?)';
+  db.query(query, [candidate_ids], (err, result) => {
+    if (err) {
+      console.error('Error deleting candidates:', err);
+      return res.status(500).json({ message: 'Error deleting candidates' });
+    }
+    res.status(200).json({ message: 'Candidates deleted successfully' });
+  });
+});
+
+// Update candidate name
+app.post('/api/admin/edit_candidate', verifyJWT, isAdmin, (req, res) => {
+  const { id, name } = req.body;
+
+  if (!id || !name || name.trim() === "") {
+    return res.status(400).json({ message: 'Candidate ID and new name are required' });
+  }
+
+  const query = 'UPDATE candidates SET name = ? WHERE id = ?';
+  db.query(query, [name, id], (err, result) => {
+    if (err) {
+      console.error('Error updating candidate:', err);
+      return res.status(500).json({ message: 'Error updating candidate name' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Candidate not found' });
+    }
+    res.status(200).json({ message: 'Candidate name updated successfully' });
+  });
+});
+
+
 
 // JWT verification middleware
 function verifyJWT(req, res, next) {

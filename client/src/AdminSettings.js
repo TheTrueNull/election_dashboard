@@ -4,13 +4,19 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
-  const [selectedMethod, setSelectedMethod] = useState('Instant Runoff'); // Default to Instant Runoff
-  const [firstName, setFirstName] = useState(''); // First Name Input
-  const [lastName, setLastName] = useState(''); // Last Name Input
+  const [selectedCandidates, setSelectedCandidates] = useState([]); // Selected candidates for deletion
+  const [editingCandidate, setEditingCandidate] = useState(null); // Candidate being edited
+  const [editedName, setEditedName] = useState(""); // Edited name input
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const navigate = useNavigate();
 
   // Fetch all candidates from the backend
   useEffect(() => {
+    fetchCandidates();
+  }, []);
+
+  const fetchCandidates = () => {
     axios.get('/api/admin/candidates')
       .then((response) => {
         setCandidates(response.data);
@@ -18,27 +24,24 @@ const AdminSettings = () => {
       .catch((error) => {
         console.error('Error fetching candidates:', error);
       });
-  }, []);
-
-  // Logout function
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.href = '/signin.html'; // Redirect to sign-in
   };
 
-  // Handle checkbox change for Active status
+  // Handle checkbox selection for deletion
   const handleCheckboxChange = (candidateId) => {
+    setSelectedCandidates((prevSelected) =>
+      prevSelected.includes(candidateId)
+        ? prevSelected.filter((id) => id !== candidateId) 
+        : [...prevSelected, candidateId]
+    );
+  };
+
+  // Handle Active/Inactive Toggle
+  const handleToggleActiveStatus = (candidateId) => {
     setCandidates((prevCandidates) =>
       prevCandidates.map((candidate) =>
         candidate.id === candidateId ? { ...candidate, is_active: !candidate.is_active } : candidate
       )
     );
-  };
-
-  // Handle dropdown selection change
-  const handleMethodChange = (event) => {
-    setSelectedMethod(event.target.value);
   };
 
   // Submit updated active statuses to the backend
@@ -50,7 +53,8 @@ const AdminSettings = () => {
 
     axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
-        alert(`Candidate statuses updated successfully! Selected method: ${selectedMethod}`);
+        alert("Candidate statuses updated successfully!");
+        fetchCandidates();
       })
       .catch((error) => {
         console.error('Error updating candidate statuses:', error);
@@ -58,7 +62,7 @@ const AdminSettings = () => {
       });
   };
 
-  // Handle adding a new candidate
+  // Handle Add Candidate
   const handleAddCandidate = () => {
     if (!firstName.trim() || !lastName.trim()) {
       alert("Please enter both first and last name.");
@@ -74,10 +78,7 @@ const AdminSettings = () => {
       .then(() => {
         setFirstName('');
         setLastName('');
-        return axios.get('/api/admin/candidates'); // Refresh the candidate list
-      })
-      .then((response) => {
-        setCandidates(response.data);
+        fetchCandidates();
       })
       .catch((error) => {
         console.error('Error adding candidate:', error);
@@ -85,14 +86,53 @@ const AdminSettings = () => {
       });
   };
 
-  // Handle navigation back to the dashboard
-  const handleBackToDashboard = () => {
-    navigate('/');
+  // Handle Delete Candidates
+  const handleDeleteCandidates = () => {
+    if (selectedCandidates.length === 0) {
+      alert("Please select candidates to delete.");
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete the selected candidates?")) {
+      return;
+    }
+
+    axios.post('/api/admin/delete_candidates', { candidate_ids: selectedCandidates })
+      .then(() => {
+        alert("Candidates deleted successfully!");
+        setSelectedCandidates([]);
+        fetchCandidates();
+      })
+      .catch((error) => {
+        console.error('Error deleting candidates:', error);
+        alert("There was an error deleting the candidates.");
+      });
   };
 
+  // Handle Edit Candidate Name
+  const handleEditCandidate = (candidate) => {
+    setEditingCandidate(candidate.id);
+    setEditedName(candidate.name);
+  };
+
+  const handleSaveEdit = (candidateId) => {
+    axios.post('/api/admin/edit_candidate', 
+      { id: candidateId, name: editedName },
+      { withCredentials: true } // Ensure credentials are sent
+    )
+    .then(() => {
+      setEditingCandidate(null);
+      fetchCandidates(); // Refresh list after successful update
+    })
+    .catch((error) => {
+      console.error('Error editing candidate:', error.response ? error.response.data : error);
+      alert("There was an error editing the candidate name.");
+    });
+  };
+  
   return (
     <div>
-      <h1>Admin Settings: Manage Candidate Status</h1>
+      <h1>Admin Settings: Manage Candidates</h1>
 
       {/* Add Candidate Section */}
       <div style={{ marginBottom: '20px' }}>
@@ -115,67 +155,78 @@ const AdminSettings = () => {
         </button>
       </div>
 
-      {/* Logout Button */}
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        right: '20px',
-        display: 'flex',
-        gap: '10px',
-      }}>
-        <button onClick={handleLogout} style={{ padding: '10px 20px', fontSize: '16px' }}>
-          Logout
-        </button>
-      </div>
-
+      {/* Candidate List with Selection, Edit & Toggle */}
       <table>
         <thead>
           <tr>
+            <th>Select</th>
             <th>Candidate Name</th>
             <th>Active</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {candidates.map((candidate) => (
             <tr key={candidate.id}>
-              <td>{candidate.name}</td>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={selectedCandidates.includes(candidate.id)}
+                  onChange={() => handleCheckboxChange(candidate.id)}
+                />
+              </td>
+              <td>
+                {editingCandidate === candidate.id ? (
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                  />
+                ) : (
+                  candidate.name
+                )}
+              </td>
               <td>
                 <input
                   type="checkbox"
                   checked={candidate.is_active}
-                  onChange={() => handleCheckboxChange(candidate.id)}
+                  onChange={() => handleToggleActiveStatus(candidate.id)}
                 />
+              </td>
+              <td>
+                {editingCandidate === candidate.id ? (
+                  <button onClick={() => handleSaveEdit(candidate.id)}>Save</button>
+                ) : (
+                  <button onClick={() => handleEditCandidate(candidate)}>Edit</button>
+                )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* Dropdown menu */}
-      <div style={{ marginTop: '20px', marginBottom: '20px' }}>
-        <label htmlFor="voting-method" style={{ fontSize: '16px', marginRight: '10px' }}>
-          Select Voting Method:
-        </label>
-        <select
-          id="voting-method"
-          value={selectedMethod}
-          onChange={handleMethodChange}
-          style={{ padding: '5px 10px', fontSize: '16px' }}
-        >
-          <option value="Instant Runoff">Instant Runoff</option>
-          <option value="Ranked Pairs">Ranked Pairs</option>
-        </select>
-      </div>
+      {/* Update & Delete Buttons */}
+      <button 
+        onClick={handleSubmit} 
+        style={{ padding: '10px 20px', fontSize: '16px', marginTop: '10px', backgroundColor: 'green', color: 'white' }}
+      >
+        Update Status
+      </button>
 
-      {/* Submit and Back to Dashboard Buttons */}
-      <div>
-        <button onClick={handleSubmit} style={{ padding: '10px 20px', fontSize: '16px', marginRight: '10px' }}>
-          Submit
-        </button>
-        <button onClick={handleBackToDashboard} style={{ padding: '10px 20px', fontSize: '16px' }}>
-          Back to Dashboard
-        </button>
-      </div>
+      <button 
+        onClick={handleDeleteCandidates} 
+        style={{ padding: '10px 20px', fontSize: '16px', marginTop: '10px', marginLeft: '10px', backgroundColor: 'red', color: 'white' }}
+      >
+        Delete Selected Candidates
+      </button>
+
+      {/* Navigation Button */}
+      <button 
+        onClick={() => navigate('/')} 
+        style={{ padding: '10px 20px', fontSize: '16px', marginLeft: '10px' }}
+      >
+        Back to Dashboard
+      </button>
     </div>
   );
 };

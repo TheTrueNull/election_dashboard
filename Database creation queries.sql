@@ -65,11 +65,12 @@ CREATE TABLE ballots (
     candidate_id INT NOT NULL,
     rankno INT NOT NULL,
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_changed TIMESTAMP DEFAULT CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+    date_changed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by VARCHAR(255),
     changed_by VARCHAR(255),
-    FOREIGN KEY (candidate_id) REFERENCES candidates(id)
+    FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE
 );
+
 
 CREATE TRIGGER created_by_ballots
 BEFORE INSERT ON ballots 
@@ -96,10 +97,8 @@ VALUES
     
     
 
-UPDATE users SET role_id = (
-  SELECT id FROM roles WHERE role_name = 'administrator'
-) WHERE username = 'testuser1';
-
+UPDATE users SET role_id = '1' WHERE username = 'testuser1';
+UPDATE users SET role_id = '2' WHERE username = 'testuser2';
 
  /*
 drop table ballots;
