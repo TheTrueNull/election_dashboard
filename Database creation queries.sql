@@ -49,9 +49,6 @@ CREATE TABLE candidates (
 );
 
 
-ALTER TABLE candidates
-ADD COLUMN active BOOLEAN DEFAULT TRUE;
-
 CREATE TRIGGER created_by_candidates
 BEFORE INSERT ON candidates
 FOR EACH ROW
