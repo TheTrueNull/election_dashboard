@@ -4,19 +4,13 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
-  const [selectedCandidates, setSelectedCandidates] = useState([]); // Selected candidates for deletion
-  const [editingCandidate, setEditingCandidate] = useState(null); // Candidate being edited
-  const [editedName, setEditedName] = useState(""); // Edited name input
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState('Instant Runoff'); // Default to Instant Runoff
+  const [firstName, setFirstName] = useState(''); // First Name Input
+  const [lastName, setLastName] = useState(''); // Last Name Input
   const navigate = useNavigate();
 
   // Fetch all candidates from the backend
   useEffect(() => {
-    fetchCandidates();
-  }, []);
-
-  const fetchCandidates = () => {
     axios.get('/api/admin/candidates')
       .then((response) => {
         setCandidates(response.data);
@@ -24,24 +18,27 @@ const AdminSettings = () => {
       .catch((error) => {
         console.error('Error fetching candidates:', error);
       });
+  }, []);
+
+  // Logout function
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    window.location.href = '/signin.html'; // Redirect to sign-in
   };
 
-  // Handle checkbox selection for deletion
+  // Handle checkbox change for Active status
   const handleCheckboxChange = (candidateId) => {
-    setSelectedCandidates((prevSelected) =>
-      prevSelected.includes(candidateId)
-        ? prevSelected.filter((id) => id !== candidateId) 
-        : [...prevSelected, candidateId]
-    );
-  };
-
-  // Handle Active/Inactive Toggle
-  const handleToggleActiveStatus = (candidateId) => {
     setCandidates((prevCandidates) =>
       prevCandidates.map((candidate) =>
         candidate.id === candidateId ? { ...candidate, is_active: !candidate.is_active } : candidate
       )
     );
+  };
+
+  // Handle dropdown selection change
+  const handleMethodChange = (event) => {
+    setSelectedMethod(event.target.value);
   };
 
   // Submit updated active statuses to the backend
@@ -53,8 +50,7 @@ const AdminSettings = () => {
 
     axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
-        alert("Candidate statuses updated successfully!");
-        fetchCandidates();
+        alert(`Candidate statuses updated successfully! Selected method: ${selectedMethod}`);
       })
       .catch((error) => {
         console.error('Error updating candidate statuses:', error);
@@ -62,7 +58,7 @@ const AdminSettings = () => {
       });
   };
 
-  // Handle Add Candidate
+  // Handle adding a new candidate
   const handleAddCandidate = () => {
     if (!firstName.trim() || !lastName.trim()) {
       alert("Please enter both first and last name.");
@@ -78,7 +74,10 @@ const AdminSettings = () => {
       .then(() => {
         setFirstName('');
         setLastName('');
-        fetchCandidates();
+        return axios.get('/api/admin/candidates'); // Refresh the candidate list
+      })
+      .then((response) => {
+        setCandidates(response.data);
       })
       .catch((error) => {
         console.error('Error adding candidate:', error);
@@ -86,50 +85,11 @@ const AdminSettings = () => {
       });
   };
 
-  // Handle Delete Candidates
-  const handleDeleteCandidates = () => {
-    if (selectedCandidates.length === 0) {
-      alert("Please select candidates to delete.");
-      return;
-    }
-
-    if (!window.confirm("Are you sure you want to delete the selected candidates?")) {
-      return;
-    }
-
-    axios.post('/api/admin/delete_candidates', { candidate_ids: selectedCandidates })
-      .then(() => {
-        alert("Candidates deleted successfully!");
-        setSelectedCandidates([]);
-        fetchCandidates();
-      })
-      .catch((error) => {
-        console.error('Error deleting candidates:', error);
-        alert("There was an error deleting the candidates.");
-      });
+  // Handle navigation back to the dashboard
+  const handleBackToDashboard = () => {
+    navigate('/');
   };
 
-  // Handle Edit Candidate Name
-  const handleEditCandidate = (candidate) => {
-    setEditingCandidate(candidate.id);
-    setEditedName(candidate.name);
-  };
-
-  const handleSaveEdit = (candidateId) => {
-    axios.post('/api/admin/edit_candidate', 
-      { id: candidateId, name: editedName },
-      { withCredentials: true } // Ensure credentials are sent
-    )
-    .then(() => {
-      setEditingCandidate(null);
-      fetchCandidates(); // Refresh list after successful update
-    })
-    .catch((error) => {
-      console.error('Error editing candidate:', error.response ? error.response.data : error);
-      alert("There was an error editing the candidate name.");
-    });
-  };
-  
   return (
     <div style={{ maxWidth: '800pc', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ textAlign: 'center', marginBottom: '20px'}}>Admin Settings: Manage Candidate</h1>
