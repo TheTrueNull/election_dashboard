@@ -50,8 +50,8 @@ app.post('/register_user', (req, res) => {
       }
 
       // Insert new user with default role_id = 2 (Voter)
-      const insertQuery = 'INSERT INTO users (username, password, email, role_id) VALUES (?, ?, ?, 2)';
-      db.query(insertQuery, [username, hash, email], (err, result) => {
+      const insertQuery = 'INSERT INTO users (username, password, email, role_id) VALUES (?, ?, ?, ?)';
+      db.query(insertQuery, [username, hash, email, 2], (err, result) => {
         if (err) {
           console.error('Error inserting new user:', err);
           return res.status(500).json({ message: 'Error inserting new user' });

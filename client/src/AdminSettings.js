@@ -4,44 +4,46 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
-  const [selectedMethod, setSelectedMethod] = useState('Instant Runoff'); // Default to Instant Runoff
-  const [firstName, setFirstName] = useState(''); // First Name Input
-  const [lastName, setLastName] = useState(''); // Last Name Input
+  const [selectedMethod, setSelectedMethod] = useState('Instant Runoff');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const navigate = useNavigate();
 
-  // Fetch all candidates from the backend
   useEffect(() => {
+    fetchCandidates();
+  }, []);
+
+  const fetchCandidates = () => {
     axios.get('/api/admin/candidates')
       .then((response) => {
-        setCandidates(response.data);
+        const withFlags = response.data.map(c => ({ ...c, isEditing: false, editName: c.name }));
+        setCandidates(withFlags);
       })
       .catch((error) => {
         console.error('Error fetching candidates:', error);
       });
-  }, []);
+  };
 
-  // Logout function
   const handleLogout = () => {
     localStorage.removeItem('token');
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.href = '/signin.html'; // Redirect to sign-in
+    window.location.href = '/signin.html';
   };
 
-  // Handle checkbox change for Active status
   const handleCheckboxChange = (candidateId) => {
-    setCandidates((prevCandidates) =>
-      prevCandidates.map((candidate) =>
-        candidate.id === candidateId ? { ...candidate, is_active: !candidate.is_active } : candidate
+    setCandidates((prev) =>
+      prev.map((candidate) =>
+        candidate.id === candidateId
+          ? { ...candidate, is_active: !candidate.is_active }
+          : candidate
       )
     );
   };
 
-  // Handle dropdown selection change
   const handleMethodChange = (event) => {
     setSelectedMethod(event.target.value);
   };
 
-  // Submit updated active statuses to the backend
   const handleSubmit = () => {
     const updatedStatuses = candidates.map(candidate => ({
       id: candidate.id,
@@ -50,15 +52,14 @@ const AdminSettings = () => {
 
     axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
-        alert(`Candidate statuses updated successfully! Selected method: ${selectedMethod}`);
+        alert(`Candidate statuses updated! Method: ${selectedMethod}`);
       })
       .catch((error) => {
-        console.error('Error updating candidate statuses:', error);
-        alert("There was an error updating candidate statuses.");
+        console.error('Error updating statuses:', error);
+        alert("Error updating candidate statuses.");
       });
   };
 
-  // Handle adding a new candidate
   const handleAddCandidate = () => {
     if (!firstName.trim() || !lastName.trim()) {
       alert("Please enter both first and last name.");
@@ -74,27 +75,67 @@ const AdminSettings = () => {
       .then(() => {
         setFirstName('');
         setLastName('');
-        return axios.get('/api/admin/candidates'); // Refresh the candidate list
-      })
-      .then((response) => {
-        setCandidates(response.data);
+        fetchCandidates();
       })
       .catch((error) => {
         console.error('Error adding candidate:', error);
-        alert("There was an error adding the candidate.");
+        alert("Error adding the candidate.");
       });
   };
 
-  // Handle navigation back to the dashboard
+  const toggleEdit = (id) => {
+    setCandidates((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, isEditing: !c.isEditing, editName: c.name }
+          : { ...c, isEditing: false }
+      )
+    );
+  };
+
+  const handleEditChange = (id, value) => {
+    setCandidates((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, editName: value } : c
+      )
+    );
+  };
+
+  const saveEdit = (id) => {
+    const candidate = candidates.find(c => c.id === id);
+    if (!candidate.editName.trim()) return alert("Name cannot be empty.");
+
+    axios.post('/api/admin/edit_candidate', { id, name: candidate.editName })
+      .then(() => {
+        fetchCandidates();
+      })
+      .catch((error) => {
+        console.error("Error editing candidate:", error);
+        alert("Error updating the candidate.");
+      });
+  };
+
+  const deleteCandidate = (id) => {
+    if (!window.confirm("Delete this candidate?")) return;
+
+    axios.post('/api/admin/delete_candidates', { candidate_ids: [id] })
+      .then(() => {
+        fetchCandidates();
+      })
+      .catch((error) => {
+        console.error("Error deleting candidate:", error);
+        alert("Error deleting the candidate.");
+      });
+  };
+
   const handleBackToDashboard = () => {
     navigate('/');
   };
 
   return (
     <div style={{ maxWidth: '800pc', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '20px'}}>Admin Settings: Manage Candidate</h1>
+      <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>Admin Settings: Manage Candidate</h1>
 
-      {/* Add Candidate Section */}
       <div style={{
         backgroundColor: '#f9f9f9',
         padding: '15px',
@@ -102,14 +143,14 @@ const AdminSettings = () => {
         marginBottom: '20px',
         boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)'
       }}>
-        <h2 style={{ marginBottom: '10px' }}>Add Candidate</h2>
+        <h2>Add Candidate</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <input
             type="text"
             placeholder="First Name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            style={{ 
+            style={{
               flex: 1,
               padding: '10px',
               borderRadius: '5px',
@@ -117,56 +158,51 @@ const AdminSettings = () => {
               fontSize: '16px'
             }}
           />
-        <input
-          type="text"
-          placeholder="Last Name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          style={{ 
-            flex: 1,
-            padding: '10px',
-            borderRadius: '5px',
-            border: '1px solid #ccc',
-            fontSize: '16px'
-          }}
-        />
-        <button 
-        onClick={handleAddCandidate} 
-        style={{ 
-          backgroundColor: '#28a745',
-          color: 'white',
-          border: 'none',
-          padding: '10px 15px',
-          borderRadius: '5px',
-          cursor:'pointer',
-          fontSize: '16px' 
-          }}>
-          Add Candidate
-        </button>
+          <input
+            type="text"
+            placeholder="Last Name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '5px',
+              border: '1px solid #ccc',
+              fontSize: '16px'
+            }}
+          />
+          <button
+            onClick={handleAddCandidate}
+            style={{
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              padding: '10px 15px',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}>
+            Add Candidate
+          </button>
+        </div>
       </div>
-    </div>
 
-      {/* Logout Button */}
-      <div style={{
-        textAlign: 'right',
-        marginBottom: '20px',
-      }}>
-        <button 
-          onClick={handleLogout} 
-          style={{ 
+      <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+        <button
+          onClick={handleLogout}
+          style={{
             backgroundColor: '#dc3545',
             color: 'white',
             border: 'none',
-            padding: '10px 20px', 
+            padding: '10px 20px',
             borderRadius: '5px',
             cursor: 'pointer',
-            fontSize: '16px' 
-            }}>
+            fontSize: '16px'
+          }}>
           Logout
         </button>
       </div>
 
-      {/* Candidates Table */}
       <div style={{
         backgroundColor: '#fff',
         padding: '15px',
@@ -177,20 +213,69 @@ const AdminSettings = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
           <thead>
             <tr style={{ backgroundColor: '#007bff', color: 'white' }}>
-              <th style={{ padding: '10px', textAlign: 'left' }}>Candidate Name</th>
-              <th style={{ padding: '10px', textAlign: 'left' }}>Active</th>
+              <th style={{ padding: '10px' }}>Candidate Name</th>
+              <th style={{ padding: '10px' }}>Active</th>
+              <th style={{ padding: '10px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {candidates.map((candidate, index) => (
-              <tr key={candidate.id} style={{ backgroundColor: index % 2 === 0 ? '#f2f2f2' : '#fff' }}>
-                <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>{candidate.name}</td>
-                <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>
+            {candidates.map((c, index) => (
+              <tr key={c.id} style={{ backgroundColor: index % 2 === 0 ? '#f2f2f2' : '#fff' }}>
+                <td style={{ padding: '10px' }}>
+                  {c.isEditing ? (
+                    <input
+                      value={c.editName}
+                      onChange={(e) => handleEditChange(c.id, e.target.value)}
+                      style={{ width: '100%', padding: '6px' }}
+                    />
+                  ) : c.name}
+                </td>
+                <td style={{ textAlign: 'center' }}>
                   <input
                     type="checkbox"
-                    checked={candidate.is_active}
-                    onChange={() => handleCheckboxChange(candidate.id)}
+                    checked={c.is_active}
+                    onChange={() => handleCheckboxChange(c.id)}
                   />
+                </td>
+                <td>
+                  {c.isEditing ? (
+                    <button
+                      onClick={() => saveEdit(c.id)}
+                      style={{
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        marginRight: '10px',
+                        padding: '5px 10px',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      Save
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleEdit(c.id)}
+                      style={{
+                        backgroundColor: '#ffc107',
+                        color: '#000',
+                        marginRight: '10px',
+                        padding: '5px 10px',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => deleteCandidate(c.id)}
+                    style={{
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      padding: '5px 10px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
@@ -198,14 +283,13 @@ const AdminSettings = () => {
         </table>
       </div>
 
-      {/* Dropdown menu */}
-      <div style={{ 
+      <div style={{
         marginTop: '20px',
         backgroundColor: '#f9f9f9',
         padding: '15px',
         borderRadius: '8px',
         boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)'
-        }}>
+      }}>
         <label htmlFor="voting-method" style={{ fontSize: '16px', marginRight: '10px' }}>
           Select Voting Method:
         </label>
@@ -213,11 +297,11 @@ const AdminSettings = () => {
           id="voting-method"
           value={selectedMethod}
           onChange={handleMethodChange}
-          style={{ 
+          style={{
             padding: '10px',
             borderRadius: '5px',
             border: '1px solid #ccc',
-            fontSize: '16px' 
+            fontSize: '16px'
           }}
         >
           <option value="Instant Runoff">Instant Runoff</option>
@@ -225,30 +309,30 @@ const AdminSettings = () => {
         </select>
       </div>
 
-      {/* Submit and Back to Dashboard Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-        <button 
-        onClick={handleSubmit} 
-        style={{ 
-          backgroundColor: '#007bff',
-          color: 'white',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontSize: '16px'
+        <button
+          onClick={handleSubmit}
+          style={{
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '16px'
           }}>
           Submit
         </button>
-        <button onClick={handleBackToDashboard} 
-        style={{ 
-          backgroundColor: '#6c757d',
-          color: 'white',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontSize: '16px'
+        <button
+          onClick={handleBackToDashboard}
+          style={{
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '16px'
           }}>
           Back to Dashboard
         </button>
