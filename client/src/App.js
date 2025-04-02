@@ -10,6 +10,8 @@ const Dashboard = () => {
   const [rankedCandidates, setRankedCandidates] = useState([]);
   const [winner, setWinner] = useState('');
   const [roleId, setRoleId] = useState(null); // Track user role
+  const [hoveredId, setHoveredId] = useState(null); //for hovering on mouse
+  const [hoveredCandidateId, setHoveredCandidateId] = useState(null);
   const navigate = useNavigate();
 
     // Check authentication & get user role
@@ -155,25 +157,41 @@ const Dashboard = () => {
               >
                 <h2>All Candidates</h2>
                 {candidates.map((c, index) => (
-                  <Draggable key={c.id} draggableId={c.id.toString()} index={index}>
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        style={{
-                          padding: '8px',
-                          margin: '4px',
-                          backgroundColor: '#f0f0f0',
-                          border: '1px solid #ccc',
-                          ...provided.draggableProps.style
-                        }}
-                      >
-                        {c.name}
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
+  <Draggable key={c.id} draggableId={c.id.toString()} index={index}>
+    {(provided, snapshot) => {
+      const isHovered = hoveredCandidateId === c.id;
+      const backgroundColor = isHovered ? '#bdbdbd' : '#f0f0f0';
+
+      const dragStyle = provided.draggableProps.style;
+      const scale = snapshot.isDragging ? 1.05 : 1;
+      const baseTransform = dragStyle?.transform || '';
+      const fullTransform = `${baseTransform} scale(${scale})`;
+
+      return (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          onMouseEnter={() => setHoveredCandidateId(c.id)}
+          onMouseLeave={() => setHoveredCandidateId(null)}
+          style={{
+            ...dragStyle, // ✅ this goes first
+            padding: '8px',
+            margin: '4px',
+            border: '1px solid #ccc',
+            backgroundColor,
+            transition: 'transform 0.2s ease, background-color 0.2s ease',
+            transform: fullTransform, // ✅ override transform here
+          }}
+        >
+          {c.name}
+        </div>
+      );
+    }}
+  </Draggable>
+))}
+
+
                 {provided.placeholder}
               </div>
             )}
@@ -189,25 +207,42 @@ const Dashboard = () => {
               >
                 <h2>Ranked Candidates</h2>
                 {rankedCandidates.map((rc, index) => (
-                  <Draggable key={rc.id} draggableId={rc.id.toString()} index={index}>
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        style={{
-                          padding: '8px',
-                          margin: '4px',
-                          backgroundColor: '#d0d0d0',
-                          border: '1px solid #ccc',
-                          ...provided.draggableProps.style
-                        }}
-                      >
-                        {rc.name}
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
+  <Draggable key={rc.id} draggableId={rc.id.toString()} index={index}>
+    {(provided, snapshot) => {
+      const isHovered = hoveredCandidateId === rc.id;
+      const backgroundColor = isHovered ? '#bdbdbd' : '#d0d0d0';
+
+      const dragStyle = provided.draggableProps.style;
+      const scale = snapshot.isDragging ? 1.05 : 1;
+      const baseTransform = dragStyle?.transform || '';
+      const fullTransform = `${baseTransform} scale(${scale})`;
+
+      return (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          onMouseEnter={() => setHoveredCandidateId(rc.id)}
+          onMouseLeave={() => setHoveredCandidateId(null)}
+          style={{
+            ...dragStyle, // ✅ drag position styles first
+            padding: '8px',
+            margin: '4px',
+            border: '1px solid #ccc',
+            backgroundColor,
+            transition: 'transform 0.2s ease, background-color 0.2s ease',
+            transform: fullTransform, // ✅ scale + drag movement
+          }}
+        >
+          {rc.name}
+        </div>
+      );
+    }}
+  </Draggable>
+))}
+
+
+
                 {provided.placeholder}
               </div>
             )}
