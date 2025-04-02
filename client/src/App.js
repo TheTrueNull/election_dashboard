@@ -175,13 +175,13 @@ const Dashboard = () => {
           onMouseEnter={() => setHoveredCandidateId(c.id)}
           onMouseLeave={() => setHoveredCandidateId(null)}
           style={{
-            ...dragStyle, // ✅ this goes first
+            ...dragStyle, 
             padding: '8px',
             margin: '4px',
             border: '1px solid #ccc',
             backgroundColor,
             transition: 'transform 0.2s ease, background-color 0.2s ease',
-            transform: fullTransform, // ✅ override transform here
+            transform: fullTransform, // override transform here
           }}
         >
           {c.name}
@@ -225,13 +225,13 @@ const Dashboard = () => {
           onMouseEnter={() => setHoveredCandidateId(rc.id)}
           onMouseLeave={() => setHoveredCandidateId(null)}
           style={{
-            ...dragStyle, // ✅ drag position styles first
+            ...dragStyle, // drag position styles first
             padding: '8px',
             margin: '4px',
             border: '1px solid #ccc',
             backgroundColor,
             transition: 'transform 0.2s ease, background-color 0.2s ease',
-            transform: fullTransform, // ✅ scale + drag movement
+            transform: fullTransform, // scale + drag movement
           }}
         >
           {rc.name}
