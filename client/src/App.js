@@ -1,4 +1,3 @@
-// App.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom';
@@ -9,25 +8,27 @@ const Dashboard = () => {
   const [candidates, setCandidates] = useState([]);
   const [rankedCandidates, setRankedCandidates] = useState([]);
   const [winner, setWinner] = useState('');
-  const [roleId, setRoleId] = useState(null); // Track user role
-  const [hoveredId, setHoveredId] = useState(null); //for hovering on mouse
-  const [username, setUsername] = useState(''); // For storing username
+  const [roleId, setRoleId] = useState(null);
+  const [username, setUsername] = useState('');
   const [hoveredCandidateId, setHoveredCandidateId] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => !prev);
+  };
+    const [isDarkToggleHovered, setIsDarkToggleHovered] = useState(false);
   const navigate = useNavigate();
 
-    // Check authentication & get user role
-    useEffect(() => {
-      axios.get('/api/user-role', { withCredentials: true })
-        .then((response) => {
-          setRoleId(response.data.role_id);
-          setUsername(response.data.username);
-        })
-        .catch(() => {
-          window.location.href = '/signin.html'; // Redirect to sign-in if unauthorized
-        });
-    }, []);
+  useEffect(() => {
+    axios.get('/api/user-role', { withCredentials: true })
+      .then((response) => {
+        setRoleId(response.data.role_id);
+        setUsername(response.data.username);
+      })
+      .catch(() => {
+        window.location.href = '/signin.html';
+      });
+  }, []);
 
-  // Fetch candidates (active only) from /api/candidates
   useEffect(() => {
     axios.get('/api/candidates')
       .then((response) => {
@@ -38,14 +39,12 @@ const Dashboard = () => {
       });
   }, []);
 
-  // Logout function
   const handleLogout = () => {
     localStorage.removeItem('token');
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.href = '/signin.html'; // Force a full reload to signin
+    window.location.href = '/signin.html';
   };
 
-  // Drag and drop logic
   const handleOnDragEnd = (result) => {
     const { source, destination } = result;
     if (!destination) return;
@@ -65,7 +64,6 @@ const Dashboard = () => {
         setRankedCandidates(sourceItems);
       }
     } else {
-      // Reordering in the same list
       const items = (source.droppableId === 'candidates') ? [...candidates] : [...rankedCandidates];
       const [movedItem] = items.splice(source.index, 1);
       items.splice(destination.index, 0, movedItem);
@@ -78,7 +76,6 @@ const Dashboard = () => {
     }
   };
 
-  // Submit Ballot
   const handleSubmitBallot = () => {
     if (rankedCandidates.length === 0) {
       alert("Please rank candidates before submitting.");
@@ -100,9 +97,7 @@ const Dashboard = () => {
       });
   };
 
-  // Calculate Winner
   const handleCalculateWinner = () => {
-    // Determine selected method from localStorage
     const method = localStorage.getItem('votingMethod') || 'Instant Runoff';
     const endpoint = (method === 'Ranked Pairs')
       ? '/api/calculate_winner_ranked_pairs'
@@ -119,34 +114,72 @@ const Dashboard = () => {
   };
 
   return (
-    <div>
-      <h2 style={{ textAlign: 'center', margin: '20px 0 10px' }}>
-        Welcome, {username}!
-        </h2>
-        <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>
-          Dashboard
-          </h1>
-
-      <div
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          display: 'flex',
-          gap: '10px',
-        }}
+    <div style={{
+      backgroundColor: darkMode ? '#2e2e2e' : '#fff',
+      color: darkMode ? '#eaeaea' : '#000',
+      minHeight: '100vh',
+      transition: 'background-color 0.3s ease, color 0.3s ease',
+      paddingBottom: '20px',
+      fontFamily: 'Segoe UI, sans-serif'
+    }}>
+      <button
+      onClick={toggleDarkMode}
+      style={{
+        padding: '10px 20px',
+        fontSize: '16px',
+        backgroundColor: darkMode ? '#444' : '#eee',
+        color: darkMode ? '#fff' : '#000',
+        border: '1px solid #888',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.3s ease',
+      }}
+      onMouseEnter={(e) =>
+        (e.target.style.backgroundColor = darkMode ? '#555' : '#ddd')
+      }
+      onMouseLeave={(e) =>
+        (e.target.style.backgroundColor = darkMode ? '#444' : '#eee')
+        }
         >
-          {roleId === 1 && ( // Only show Admin Settings if user is an Admin
-            <button
-              onClick={() => navigate('/admin-settings')}
-              style={{ padding: '10px 20px', fontSize: '16px' }}
-            >
-              Admin Settings
-            </button>
-          )}
+          {darkMode ? 'Light Mode' : 'Dark Mode'}
+      </button>
+
+
+      <h2 style={{ textAlign: 'center', margin: '20px 0 10px' }}>Welcome, {username}!</h2>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Dashboard</h1>
+
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        display: 'flex',
+        gap: '10px',
+      }}>
+        {roleId === 1 && (
+          <button
+            onClick={() => navigate('/admin-settings')}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              backgroundColor: darkMode ? '#444' : '#eee',
+              color: darkMode ? '#fff' : '#000',
+              border: '1px solid #888',
+              borderRadius: '5px'
+            }}
+          >
+            Admin Settings
+          </button>
+        )}
         <button
           onClick={handleLogout}
-          style={{ padding: '10px 20px', fontSize: '16px' }}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            backgroundColor: darkMode ? '#444' : '#eee',
+            color: darkMode ? '#fff' : '#000',
+            border: '1px solid #888',
+            borderRadius: '5px'
+          }}
         >
           Logout
         </button>
@@ -160,48 +193,52 @@ const Dashboard = () => {
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
-                style={{ backgroundColor: '#e0e0e0', padding: '8px', width: '45%' }}
+                style={{ backgroundColor: darkMode ? '#3a3a3a' : '#e0e0e0', padding: '8px', width: '45%' }}
               >
                 <h2>All Candidates</h2>
                 {candidates.map((c, index) => (
-  <Draggable key={c.id} draggableId={c.id.toString()} index={index}>
-    {(provided, snapshot) => {
-      const isHovered = hoveredCandidateId === c.id;
-      const defaultColor = index % 2 === 0 ? '#e0e0e0' : '#d0d0d0';
-      const hoverColor = index % 2 === 0 ? '#cccccc' : '#bbbbbb';
-      const background = isHovered ? hoverColor : defaultColor;
-      const dragStyle = provided.draggableProps.style;
-      const scale = snapshot.isDragging ? 1.05 : 1;
-      const baseTransform = dragStyle?.transform || '';
-      const fullTransform = `${baseTransform} scale(${scale})`;
-
-      return (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          onMouseEnter={() => setHoveredCandidateId(c.id)}
-          onMouseLeave={() => setHoveredCandidateId(null)}
-          style={{
-            ...dragStyle, 
-            padding: '8px',
-            margin: '4px',
-            border: '1px solid #ccc',
-            background: background,
-            transition: 'transform 0.2s ease, background-color 0.2s ease',
-            transform: fullTransform, // override transform here
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-          }}
-        >
-          {c.name}
-        </div>
-      );
-    }}
-  </Draggable>
-))}
-
-
+                  <Draggable key={c.id} draggableId={c.id.toString()} index={index}>
+                    {(provided, snapshot) => {
+                      const isHovered = hoveredCandidateId === c.id;
+                      const isEvenRow = index % 2 === 0;
+                      const baseColor = darkMode
+                        ? isEvenRow ? '#3a3a3a' : '#2e2e2e'
+                        : isEvenRow ? '#ffffff' : '#f9f9f9';
+                        const hoverColor = darkMode ? '#555' : '#ddd';
+                        const backgroundColor = isHovered ? hoverColor : baseColor;                                              
+                      const dragStyle = provided.draggableProps.style;
+                      const scale = snapshot.isDragging ? 1.05 : 1;
+                      const baseTransform = dragStyle?.transform || '';
+                      const fullTransform = `${baseTransform} scale(${scale})`;
+                      return (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          onMouseEnter={() => setHoveredCandidateId(c.id)}
+                          onMouseLeave={() => setHoveredCandidateId(null)}
+                          style={{
+                            ...dragStyle,
+                            padding: '8px',
+                            margin: '4px',
+                            border: '1px solid #ccc',
+                            backgroundColor,
+                            transition: 'transform 0.2s ease, background-color 0.2s ease',
+                            transform: fullTransform,
+                            borderRadius: '8px',
+                            boxShadow: darkMode
+                            ? '0 2px 4px rgba(255, 255, 255, 0.1)'
+                            : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          {c.name}
+                        </div>
+                      );
+                    }}
+                  </Draggable>
+                ))}
                 {provided.placeholder}
               </div>
             )}
@@ -213,63 +250,63 @@ const Dashboard = () => {
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
-                style={{ backgroundColor: '#f7f7f7', padding: '8px', width: '45%' }}
+                style={{ backgroundColor: darkMode ? '#3a3a3a' : '#f7f7f7', padding: '8px', width: '45%' }}
               >
                 <h2>Ranked Candidates</h2>
                 {rankedCandidates.map((rc, index) => (
                   <Draggable key={rc.id} draggableId={rc.id.toString()} index={index}>
                     {(provided, snapshot) => {
                       const isHovered = hoveredCandidateId === rc.id;
-                      const defaultColor = index % 2 === 0 ? '#e0e0e0' : '#d0d0d0';
-                      const hoverColor = index % 2 === 0 ? '#cccccc' : '#bbbbbb';
-                      const background = isHovered ? hoverColor : defaultColor;
+                      const isEvenRow = index % 2 === 0;
+                      const baseColor = darkMode
+                        ? isEvenRow ? '#3a3a3a' : '#2e2e2e'
+                        : isEvenRow ? '#ffffff' : '#f9f9f9';
+                        const hoverColor = darkMode ? '#555' : '#ddd';
+                        const backgroundColor = isHovered ? hoverColor : baseColor;                        
                       const dragStyle = provided.draggableProps.style;
                       const scale = snapshot.isDragging ? 1.05 : 1;
                       const baseTransform = dragStyle?.transform || '';
                       const fullTransform = `${baseTransform} scale(${scale})`;
                       return (
-                      <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      onMouseEnter={() => setHoveredCandidateId(rc.id)}
-                      onMouseLeave={() => setHoveredCandidateId(null)}
-                      style={{
-                        ...dragStyle, // drag position styles first
-                        padding: '8px',
-                        margin: '4px',
-                        border: '1px solid #ccc',
-                        background: background,
-                        transition: 'transform 0.2s ease, background-color 0.2s ease',
-                        transform: fullTransform, // scale + drag movement
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        }}>
-                          <span style={{ fontWeight: 'bold', marginRight: '10px' }}> {/*add ranked number next to candidate*/}
-                            {index + 1}.
-                            </span>
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          onMouseEnter={() => setHoveredCandidateId(rc.id)}
+                          onMouseLeave={() => setHoveredCandidateId(null)}
+                          style={{
+                            ...dragStyle,
+                            padding: '8px',
+                            margin: '4px',
+                            border: '1px solid #ccc',
+                            backgroundColor,
+                            transition: 'transform 0.2s ease, background-color 0.2s ease',
+                            transform: fullTransform,
+                            borderRadius: '8px',
+                            boxShadow: darkMode
+                            ? '0 2px 4px rgba(255, 255, 255, 0.1)'
+                            : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <span style={{ fontWeight: 'bold', marginRight: '10px' }}>{index + 1}.</span>
                           {rc.name}
                         </div>
                       );
-                      }
-                    }
-                    </Draggable>
-                  ))}
-                  {rankedCandidates.length === 0 && (
-                    <p style={{ 
-                      textAlign: 'center', 
-                      color: '#777', 
-                      fontStyle: 'italic', 
-                      marginTop: '10px' 
-                      }}>
-                        Drag candidates here to rank them.
-                        </p>
-                      )}
-
-
-
+                    }}
+                  </Draggable>
+                ))}
+                {rankedCandidates.length === 0 && (
+                  <p style={{
+                    textAlign: 'center',
+                    color: darkMode ? '#aaa' : '#777',
+                    fontStyle: 'italic',
+                    marginTop: '10px'
+                  }}>
+                    Drag candidates here to rank them.
+                  </p>
+                )}
                 {provided.placeholder}
               </div>
             )}
@@ -281,19 +318,27 @@ const Dashboard = () => {
         <button
           onClick={handleSubmitBallot}
           style={{
-            padding: '10px 20px', 
-            fontSize: '16px', 
-            marginRight: '10px', 
-            borderRadius: '6px', 
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #aaa',
+            padding: '10px 20px',
+            fontSize: '16px',
+            backgroundColor: darkMode ? '#444' : '#eee',
+            color: darkMode ? '#fff' : '#000',
+            border: '1px solid #888',
+            borderRadius: '5px',
+            marginRight: '10px'
           }}
         >
           Submit Ballot
         </button>
         <button
           onClick={handleCalculateWinner}
-          style={{ padding: '10px 20px', fontSize: '16px' }}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            backgroundColor: darkMode ? '#444' : '#eee',
+            color: darkMode ? '#fff' : '#000',
+            border: '1px solid #888',
+            borderRadius: '5px'
+          }}
         >
           Calculate Winner
         </button>
@@ -308,7 +353,6 @@ const Dashboard = () => {
   );
 };
 
-// The main App uses Router for navigation
 const App = () => {
   return (
     <Router>
