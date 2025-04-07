@@ -189,6 +189,8 @@ const Dashboard = () => {
             backgroundColor,
             transition: 'transform 0.2s ease, background-color 0.2s ease',
             transform: fullTransform, // override transform here
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
           }}
         >
           {c.name}
@@ -214,39 +216,54 @@ const Dashboard = () => {
               >
                 <h2>Ranked Candidates</h2>
                 {rankedCandidates.map((rc, index) => (
-  <Draggable key={rc.id} draggableId={rc.id.toString()} index={index}>
-    {(provided, snapshot) => {
-      const isHovered = hoveredCandidateId === rc.id;
-      const backgroundColor = isHovered ? '#bdbdbd' : '#d0d0d0';
-
-      const dragStyle = provided.draggableProps.style;
-      const scale = snapshot.isDragging ? 1.05 : 1;
-      const baseTransform = dragStyle?.transform || '';
-      const fullTransform = `${baseTransform} scale(${scale})`;
-
-      return (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          onMouseEnter={() => setHoveredCandidateId(rc.id)}
-          onMouseLeave={() => setHoveredCandidateId(null)}
-          style={{
-            ...dragStyle, // drag position styles first
-            padding: '8px',
-            margin: '4px',
-            border: '1px solid #ccc',
-            backgroundColor,
-            transition: 'transform 0.2s ease, background-color 0.2s ease',
-            transform: fullTransform, // scale + drag movement
-          }}
-        >
-          {rc.name}
-        </div>
-      );
-    }}
-  </Draggable>
-))}
+                  <Draggable key={rc.id} draggableId={rc.id.toString()} index={index}>
+                    {(provided, snapshot) => {
+                      const isHovered = hoveredCandidateId === rc.id;
+                      const backgroundColor = isHovered ? '#bdbdbd' : '#d0d0d0';
+                      const dragStyle = provided.draggableProps.style;
+                      const scale = snapshot.isDragging ? 1.05 : 1;
+                      const baseTransform = dragStyle?.transform || '';
+                      const fullTransform = `${baseTransform} scale(${scale})`;
+                      return (
+                      <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      onMouseEnter={() => setHoveredCandidateId(rc.id)}
+                      onMouseLeave={() => setHoveredCandidateId(null)}
+                      style={{
+                        ...dragStyle, // drag position styles first
+                        padding: '8px',
+                        margin: '4px',
+                        border: '1px solid #ccc',
+                        backgroundColor,
+                        transition: 'transform 0.2s ease, background-color 0.2s ease',
+                        transform: fullTransform, // scale + drag movement
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        }}>
+                          <span style={{ fontWeight: 'bold', marginRight: '10px' }}> {/*add ranked number next to candidate*/}
+                            {index + 1}.
+                            </span>
+                          {rc.name}
+                        </div>
+                      );
+                      }
+                    }
+                    </Draggable>
+                  ))}
+                  {rankedCandidates.length === 0 && (
+                    <p style={{ 
+                      textAlign: 'center', 
+                      color: '#777', 
+                      fontStyle: 'italic', 
+                      marginTop: '10px' 
+                      }}>
+                        Drag candidates here to rank them.
+                        </p>
+                      )}
 
 
 
@@ -260,7 +277,14 @@ const Dashboard = () => {
       <div style={{ textAlign: 'center', marginTop: '20px' }}>
         <button
           onClick={handleSubmitBallot}
-          style={{ padding: '10px 20px', fontSize: '16px', marginRight: '10px' }}
+          style={{
+            padding: '10px 20px', 
+            fontSize: '16px', 
+            marginRight: '10px', 
+            borderRadius: '6px', 
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #aaa',
+          }}
         >
           Submit Ballot
         </button>
