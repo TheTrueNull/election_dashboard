@@ -11,6 +11,7 @@ const Dashboard = () => {
   const [winner, setWinner] = useState('');
   const [roleId, setRoleId] = useState(null); // Track user role
   const [hoveredId, setHoveredId] = useState(null); //for hovering on mouse
+  const [username, setUsername] = useState(''); // For storing username
   const [hoveredCandidateId, setHoveredCandidateId] = useState(null);
   const navigate = useNavigate();
 
@@ -19,6 +20,7 @@ const Dashboard = () => {
       axios.get('/api/user-role', { withCredentials: true })
         .then((response) => {
           setRoleId(response.data.role_id);
+          setUsername(response.data.username);
         })
         .catch(() => {
           window.location.href = '/signin.html'; // Redirect to sign-in if unauthorized
@@ -118,7 +120,12 @@ const Dashboard = () => {
 
   return (
     <div>
-      <h1>Dashboard</h1>
+      <h2 style={{ textAlign: 'center', margin: '20px 0 10px' }}>
+        Welcome, {username}!
+        </h2>
+        <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>
+          Dashboard
+          </h1>
 
       <div
         style={{
