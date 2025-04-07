@@ -167,8 +167,9 @@ const Dashboard = () => {
   <Draggable key={c.id} draggableId={c.id.toString()} index={index}>
     {(provided, snapshot) => {
       const isHovered = hoveredCandidateId === c.id;
-      const backgroundColor = isHovered ? '#bdbdbd' : '#f0f0f0';
-
+      const defaultColor = index % 2 === 0 ? '#e0e0e0' : '#d0d0d0';
+      const hoverColor = index % 2 === 0 ? '#cccccc' : '#bbbbbb';
+      const background = isHovered ? hoverColor : defaultColor;
       const dragStyle = provided.draggableProps.style;
       const scale = snapshot.isDragging ? 1.05 : 1;
       const baseTransform = dragStyle?.transform || '';
@@ -186,7 +187,7 @@ const Dashboard = () => {
             padding: '8px',
             margin: '4px',
             border: '1px solid #ccc',
-            backgroundColor,
+            background: background,
             transition: 'transform 0.2s ease, background-color 0.2s ease',
             transform: fullTransform, // override transform here
             borderRadius: '8px',
@@ -219,7 +220,9 @@ const Dashboard = () => {
                   <Draggable key={rc.id} draggableId={rc.id.toString()} index={index}>
                     {(provided, snapshot) => {
                       const isHovered = hoveredCandidateId === rc.id;
-                      const backgroundColor = isHovered ? '#bdbdbd' : '#d0d0d0';
+                      const defaultColor = index % 2 === 0 ? '#e0e0e0' : '#d0d0d0';
+                      const hoverColor = index % 2 === 0 ? '#cccccc' : '#bbbbbb';
+                      const background = isHovered ? hoverColor : defaultColor;
                       const dragStyle = provided.draggableProps.style;
                       const scale = snapshot.isDragging ? 1.05 : 1;
                       const baseTransform = dragStyle?.transform || '';
@@ -236,7 +239,7 @@ const Dashboard = () => {
                         padding: '8px',
                         margin: '4px',
                         border: '1px solid #ccc',
-                        backgroundColor,
+                        background: background,
                         transition: 'transform 0.2s ease, background-color 0.2s ease',
                         transform: fullTransform, // scale + drag movement
                         borderRadius: '8px',
