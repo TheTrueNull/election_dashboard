@@ -99,19 +99,21 @@ const Dashboard = () => {
 
   const handleCalculateWinner = () => {
     const method = localStorage.getItem('votingMethod') || 'Instant Runoff';
-    const endpoint = (method === 'Ranked Pairs')
-      ? '/api/calculate_winner_ranked_pairs'
-      : '/api/calculate_winner';
-
-    axios.get(endpoint)
+  
+    console.log(`Calculating winner using ${method}...`);
+  
+    axios.get('/api/calculate_winner', {
+      headers: { 'x-voting-method': method }
+    })
       .then((response) => {
-        setWinner(response.data.winner);
+        setWinner(response.data.winner);  // ✅ Display winner
       })
       .catch((error) => {
         console.error("Error calculating the winner:", error);
         alert("There was an error calculating the winner.");
       });
   };
+
 
   return (
     <div style={{
@@ -345,10 +347,13 @@ const Dashboard = () => {
       </div>
 
       {winner && (
-        <h2 style={{ marginTop: '20px', textAlign: 'center' }}>
-          Winner: {winner}
-        </h2>
-      )}
+  <div style={{ marginTop: '20px', textAlign: 'center' }}>
+    <h2>Winner: {winner}</h2>
+    <p style={{ fontStyle: 'italic' }}>
+      Voting Method: <strong>{localStorage.getItem('votingMethod') || 'Instant Runoff'}</strong>
+    </p>
+  </div>
+    )}
     </div>
   );
 };
