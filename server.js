@@ -33,7 +33,10 @@ app.post('/register_user', (req, res) => {
   // Check if the username or email already exists
   const checkQuery = 'SELECT * FROM users WHERE username = ? OR email = ?';
   db.query(checkQuery, [username, email], (err, results) => {
-    if (err) throw err;
+    if (err) {
+      console.error('Error checking user existence:', err);
+      return res.status(500).json({ message: 'Server error checking user existence' });
+    }
 
     if (results.length > 0) {
       return res.redirect('/registration.html?error=Username%20or%20email%20already%20exists');
@@ -41,11 +44,19 @@ app.post('/register_user', (req, res) => {
 
     // Hash the password before storing it
     bcrypt.hash(password, 10, (err, hash) => {
-      if (err) throw err;
+      if (err) {
+        console.error('Error hashing password:', err);
+        return res.status(500).json({ message: 'Server error hashing password' });
+      }
 
-      const insertQuery = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
-      db.query(insertQuery, [username, hash, email], (err, result) => {
-        if (err) throw err;
+      // Insert new user with default role_id = 2 (Voter)
+      const insertQuery = 'INSERT INTO users (username, password, email, role_id) VALUES (?, ?, ?, ?)';
+      db.query(insertQuery, [username, hash, email, 2], (err, result) => {
+        if (err) {
+          console.error('Error inserting new user:', err);
+          return res.status(500).json({ message: 'Error inserting new user' });
+        }
+
         res.redirect('/signin.html?message=Registration%20successful,%20please%20login');
       });
     });
@@ -168,6 +179,47 @@ app.post('/api/admin/add_candidate', (req, res) => {
   });
 });
 
+// Delete candidates (Admin only)
+app.post('/api/admin/delete_candidates', verifyJWT, isAdmin, (req, res) => {
+  const { candidate_ids } = req.body;
+
+  if (!candidate_ids || candidate_ids.length === 0) {
+    return res.status(400).json({ message: 'No candidates selected for deletion' });
+  }
+
+  const query = 'DELETE FROM candidates WHERE id IN (?)';
+  db.query(query, [candidate_ids], (err, result) => {
+    if (err) {
+      console.error('Error deleting candidates:', err);
+      return res.status(500).json({ message: 'Error deleting candidates' });
+    }
+    res.status(200).json({ message: 'Candidates deleted successfully' });
+  });
+});
+
+// Update candidate name
+app.post('/api/admin/edit_candidate', verifyJWT, isAdmin, (req, res) => {
+  const { id, name } = req.body;
+
+  if (!id || !name || name.trim() === "") {
+    return res.status(400).json({ message: 'Candidate ID and new name are required' });
+  }
+
+  const query = 'UPDATE candidates SET name = ? WHERE id = ?';
+  db.query(query, [name, id], (err, result) => {
+    if (err) {
+      console.error('Error updating candidate:', err);
+      return res.status(500).json({ message: 'Error updating candidate name' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Candidate not found' });
+    }
+    res.status(200).json({ message: 'Candidate name updated successfully' });
+  });
+});
+
+
+
 // JWT verification middleware
 function verifyJWT(req, res, next) {
   const token = req.cookies.token;
@@ -212,24 +264,23 @@ app.post('/api/submit_ballot', (req, res) => {
 
 // Function to calculate the winner using Instant Runoff Voting
 app.get('/api/calculate_winner', (req, res) => {
+  const method = req.headers['x-voting-method'] || 'Instant Runoff';
+
   const getBallotsQuery = 'SELECT ballot_id, candidate_id, rankno FROM ballots ORDER BY ballot_id, rankno';
   const getCandidatesQuery = 'SELECT * FROM candidates';
 
-  // First, fetch the candidates
   db.query(getCandidatesQuery, (err, candidateResults) => {
     if (err) {
       console.error('Error fetching candidates:', err);
       return res.status(500).json({ message: 'Error fetching candidates' });
     }
 
-    // Now fetch the ballots
     db.query(getBallotsQuery, (err, ballotResults) => {
       if (err) {
         console.error('Error fetching ballots:', err);
         return res.status(500).json({ message: 'Error fetching ballots' });
       }
 
-      // Process ballots by grouping by ballot_id
       const ballots = {};
       ballotResults.forEach(row => {
         if (!ballots[row.ballot_id]) {
@@ -238,17 +289,105 @@ app.get('/api/calculate_winner', (req, res) => {
         ballots[row.ballot_id].push({ candidate_id: row.candidate_id, rankno: row.rankno });
       });
 
-      // Perform the Instant Runoff Voting algorithm
-      const irvWinner = calculateIRVWinner(ballots, candidateResults);  // Pass candidates to IRV function
-
-      if (irvWinner) {
-        res.status(200).json({ winner: irvWinner.name });
+      // ✅ Use selected method
+      if (method === 'Ranked Pairs') {
+        const rpWinner = calculateRankedPairsWinner(ballots, candidateResults);
+        if (rpWinner) {
+          return res.status(200).json({ winner: rpWinner.name });
+        } else {
+          return res.status(500).json({ message: 'Could not determine a Ranked Pairs winner' });
+        }
+      } else if (method === 'Coombs') {
+        const coombsWinner = calculateCoombsWinner(ballots, candidateResults);
+        if (coombsWinner) {
+          return res.status(200).json({ winner: coombsWinner.name });
+        } else {
+          return res.status(500).json({ message: 'Could not determine a Coombs Method winner' });
+        }
       } else {
-        res.status(500).json({ message: 'No winner could be determined' });
+        const irvWinner = calculateIRVWinner(ballots, candidateResults);
+        if (irvWinner) {
+          return res.status(200).json({ winner: irvWinner.name });
+        } else {
+          return res.status(500).json({ message: 'Could not determine an IRV winner' });
+        }
       }
     });
   });
 });
+
+function calculateCoombsWinner(ballots, candidates) {
+  const candidateIds = candidates.map(c => c.id);
+
+  let activeCandidates = new Set(candidateIds);
+
+  while (activeCandidates.size > 1) {
+    const lastPlaceCounts = {};
+
+    // Initialize counts
+    activeCandidates.forEach(id => lastPlaceCounts[id] = 0);
+
+    // Tally last-place votes
+    Object.values(ballots).forEach(ballot => {
+      const ranked = ballot
+        .filter(b => activeCandidates.has(b.candidate_id))
+        .sort((a, b) => a.rankno - b.rankno);
+      if (ranked.length > 0) {
+        const lastPlace = ranked[ranked.length - 1].candidate_id;
+        lastPlaceCounts[lastPlace]++;
+      }
+    });
+
+    // Eliminate the candidate with the most last-place votes
+    const maxLastPlaceVotes = Math.max(...Object.values(lastPlaceCounts));
+    const mostUnpopular = Object.keys(lastPlaceCounts).find(
+      id => lastPlaceCounts[id] === maxLastPlaceVotes
+    );
+
+    activeCandidates.delete(parseInt(mostUnpopular));
+  }
+
+  const [winnerId] = [...activeCandidates];
+  return candidates.find(c => c.id === winnerId) || null;
+}
+
+
+// Ranked Pairs Voting Algorithm
+app.get('/api/calculate_winner_ranked_pairs', (req, res) => {
+  const getBallotsQuery = 'SELECT ballot_id, candidate_id, rankno FROM ballots ORDER BY ballot_id, rankno';
+  const getCandidatesQuery = 'SELECT * FROM candidates';
+
+  db.query(getCandidatesQuery, (err, candidates) => {
+    if (err) {
+      console.error('Error fetching candidates:', err);
+      return res.status(500).json({ message: 'Error fetching candidates' });
+    }
+
+    db.query(getBallotsQuery, (err, ballotResults) => {
+      if (err) {
+        console.error('Error fetching ballots:', err);
+        return res.status(500).json({ message: 'Error fetching ballots' });
+      }
+
+      // Step 1: Build ballots object
+      const ballots = {};
+      ballotResults.forEach(row => {
+        if (!ballots[row.ballot_id]) {
+          ballots[row.ballot_id] = [];
+        }
+        ballots[row.ballot_id].push({ candidate_id: row.candidate_id, rankno: row.rankno });
+      });
+
+      const winner = calculateRankedPairsWinner(ballots, candidates);
+      if (winner) {
+        return res.status(200).json({ winner: winner.name });
+      } else {
+        return res.status(500).json({ message: 'Could not determine a winner using Ranked Pairs' });
+      }
+    });
+  });
+});
+
 
 // IRV Algorithm
 function calculateIRVWinner(ballots, candidates) {
@@ -300,6 +439,81 @@ function calculateIRVWinner(ballots, candidates) {
     });
   }
 }
+
+function calculateRankedPairsWinner(ballots, candidates) {
+  const candidateIds = candidates.map(c => c.id);
+  const pairwise = {};
+
+  // Initialize pairwise margins
+  for (let i of candidateIds) {
+    for (let j of candidateIds) {
+      if (i !== j) pairwise[`${i}-${j}`] = 0;
+    }
+  }
+
+  // Tally pairwise comparisons
+  for (let ballotId in ballots) {
+    const ranking = ballots[ballotId].sort((a, b) => a.rankno - b.rankno);
+    for (let i = 0; i < ranking.length; i++) {
+      for (let j = i + 1; j < ranking.length; j++) {
+        const higher = ranking[i].candidate_id;
+        const lower = ranking[j].candidate_id;
+        pairwise[`${higher}-${lower}`]++;
+      }
+    }
+  }
+
+  // Build list of victories
+  const victories = [];
+  for (let i of candidateIds) {
+    for (let j of candidateIds) {
+      if (i === j) continue;
+      const forward = pairwise[`${i}-${j}`] || 0;
+      const backward = pairwise[`${j}-${i}`] || 0;
+      if (forward > backward) {
+        victories.push({
+          winner: i,
+          loser: j,
+          margin: forward - backward
+        });
+      }
+    }
+  }
+
+  // Sort by margin descending
+  victories.sort((a, b) => b.margin - a.margin);
+
+  // Lock victories without creating cycles
+  const locked = {};
+  candidateIds.forEach(id => (locked[id] = []));
+
+  const createsCycle = (start, current) => {
+    if (start === current) return true;
+    for (let next of locked[current]) {
+      if (createsCycle(start, next)) return true;
+    }
+    return false;
+  };
+
+  victories.forEach(({ winner, loser }) => {
+    locked[winner].push(loser);
+    if (createsCycle(winner, loser)) {
+      // Revert if cycle created
+      locked[winner].pop();
+    }
+  });
+
+  // The winner is the candidate with no arrows pointing to them
+  for (let id of candidateIds) {
+    const hasIncoming = Object.values(locked).some(list => list.includes(id));
+    if (!hasIncoming) {
+      return candidates.find(c => c.id === id);
+    }
+  }
+
+  return null;
+}
+
 
 // Middleware to check if the user is an admin
 function isAdmin(req, res, next) {

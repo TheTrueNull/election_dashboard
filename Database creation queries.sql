@@ -49,9 +49,6 @@ CREATE TABLE candidates (
 );
 
 
-ALTER TABLE candidates
-ADD COLUMN active BOOLEAN DEFAULT TRUE;
-
 CREATE TRIGGER created_by_candidates
 BEFORE INSERT ON candidates
 FOR EACH ROW
@@ -68,11 +65,12 @@ CREATE TABLE ballots (
     candidate_id INT NOT NULL,
     rankno INT NOT NULL,
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_changed TIMESTAMP DEFAULT CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP,
+    date_changed TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by VARCHAR(255),
     changed_by VARCHAR(255),
-    FOREIGN KEY (candidate_id) REFERENCES candidates(id)
+    FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE
 );
+
 
 CREATE TRIGGER created_by_ballots
 BEFORE INSERT ON ballots 
@@ -83,13 +81,6 @@ CREATE TRIGGER changed_by_ballots
 BEFORE UPDATE ON ballots 
 FOR EACH ROW
 SET NEW.changed_by = USER();
-
-
-drop table ballots;
-drop table candidates;
-drop table users;
-drop table roles;
-
 
 INSERT INTO candidates (name)
 VALUES 
@@ -105,15 +96,21 @@ VALUES
     ('Goo DePresident');
     
     
-select * from users;
-UPDATE users SET role_id = (
-  SELECT id FROM roles WHERE role_name = 'administrator'
-) WHERE username = 'testuser1';
-    
+
+UPDATE users SET role_id = '1' WHERE username = 'testuser1';
+UPDATE users SET role_id = '2' WHERE username = 'testuser2';
+
+ /*
+drop table ballots;
+drop table candidates;
+drop table users;
+drop table roles;
+ 
+ select * from users;   
 select * from roles;
 select * from candidates;
 delete from candidates;
 delete from ballots;
 select * from ballots;
 
-select * from candidates;
+select * from candidates;*/
