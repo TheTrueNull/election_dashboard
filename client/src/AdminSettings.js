@@ -49,7 +49,10 @@ const AdminSettings = () => {
       id: candidate.id,
       is_active: candidate.is_active
     }));
-
+  
+    // Store method in localStorage
+    localStorage.setItem('votingMethod', selectedMethod);
+  
     axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
         alert(`Candidate statuses updated! Method: ${selectedMethod}`);
@@ -302,11 +305,12 @@ const AdminSettings = () => {
             borderRadius: '5px',
             border: '1px solid #ccc',
             fontSize: '16px'
-          }}
-        >
-          <option value="Instant Runoff">Instant Runoff</option>
-          <option value="Ranked Pairs">Ranked Pairs</option>
-        </select>
+  }}
+>
+  <option value="Instant Runoff">Instant Runoff</option>
+  <option value="Ranked Pairs">Ranked Pairs</option>
+  <option value="Coombs">Coombs Method</option>
+</select>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
