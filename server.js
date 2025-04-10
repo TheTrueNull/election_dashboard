@@ -289,7 +289,7 @@ app.get('/api/calculate_winner', (req, res) => {
         ballots[row.ballot_id].push({ candidate_id: row.candidate_id, rankno: row.rankno });
       });
 
-      // ✅ Use selected method
+      //Use selected method
       if (method === 'Ranked Pairs') {
         const rpWinner = calculateRankedPairsWinner(ballots, candidateResults);
         if (rpWinner) {
