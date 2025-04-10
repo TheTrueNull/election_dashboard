@@ -267,9 +267,10 @@ app.get('/api/calculate_winner', (req, res) => {
   const method = req.headers['x-voting-method'] || 'Instant Runoff';
 
   const getBallotsQuery = 'SELECT ballot_id, candidate_id, rankno FROM ballots ORDER BY ballot_id, rankno';
-  const getCandidatesQuery = 'SELECT * FROM candidates';
+  const getCandidatesQuery = 'SELECT * FROM candidates WHERE id IN (SELECT DISTINCT candidate_id FROM ballots)';
 
   db.query(getCandidatesQuery, (err, candidateResults) => {
+    console.log("Eligible candidates:", candidateResults.map(c => c.name));
     if (err) {
       console.error('Error fetching candidates:', err);
       return res.status(500).json({ message: 'Error fetching candidates' });
