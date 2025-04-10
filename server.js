@@ -536,7 +536,7 @@ app.get('/api/admin/users', verifyJWT, isAdmin, (req, res) => {
 // Fetch the user's role ID based on the JWT token
 app.get('/api/user-role', verifyJWT, (req, res) => {
   const userId = req.user.id;
-  const query = 'SELECT role_id FROM users WHERE id = ?';
+  const query = 'SELECT role_id, username FROM users WHERE id = ?';
 
   db.query(query, [userId], (err, results) => {
     if (err) {
@@ -546,7 +546,10 @@ app.get('/api/user-role', verifyJWT, (req, res) => {
     if (results.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json({ role_id: results[0].role_id });
+    res.json({ 
+      role_id: results[0].role_id, // Returns username and id
+      username: results[0].username,
+     });
   });
 });
 
