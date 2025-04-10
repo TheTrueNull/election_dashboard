@@ -146,23 +146,22 @@ const AdminSettings = () => {
       </div>
     </div>
 
-      {/* Logout Button */}
+      {/* Back to Dashboard Button */}
       <div style={{
         textAlign: 'right',
         marginBottom: '20px',
       }}>
-        <button 
-          onClick={handleLogout} 
-          style={{ 
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            padding: '10px 20px', 
-            borderRadius: '5px',
-            cursor: 'pointer',
-            fontSize: '16px' 
-            }}>
-          Logout
+        <button onClick={handleBackToDashboard} 
+        style={{ 
+          backgroundColor: '#6c757d',
+          color: 'white',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          fontSize: '16px'
+          }}>
+          Back to Dashboard
         </button>
       </div>
 
@@ -225,7 +224,7 @@ const AdminSettings = () => {
         </select>
       </div>
 
-      {/* Submit and Back to Dashboard Buttons */}
+      {/* Submit and Logout Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
         <button 
         onClick={handleSubmit} 
@@ -240,17 +239,19 @@ const AdminSettings = () => {
           }}>
           Submit
         </button>
-        <button onClick={handleBackToDashboard} 
-        style={{ 
-          backgroundColor: '#6c757d',
-          color: 'white',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontSize: '16px'
-          }}>
-          Back to Dashboard
+
+        <button 
+          onClick={handleLogout} 
+          style={{ 
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px', 
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '16px' 
+            }}>
+          Logout
         </button>
       </div>
     </div>
