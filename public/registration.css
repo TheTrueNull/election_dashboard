@@ -8,6 +8,24 @@ body {
     margin: 0;
 }
 
+canvas {
+    display: block;
+    vertical-align: bottom;
+}
+
+/* ---- particlesjs-config.json container ---- */
+#particles-js {
+    position: absolute;
+    width: 100%; /* Ensure full width */
+    height: 100%; /* Ensure full height */
+    z-index: -1; /* Ensure it is behind other content */
+    background-color: #b61924; /* Example background color */
+    background-image: url(""); /* If you have a specific image */
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: 50% 50%;
+}
+
 /* create card*/
 .card {
     background-color: white;
@@ -16,6 +34,8 @@ body {
     box-shadow: 0 4px 8px black;
     width: 350px;
     text-align: center;
+    position: relative; /* Ensure card is positioned relative */
+    z-index: 1; /* Ensure card is above particles */
 }
 
 /* centering form*/

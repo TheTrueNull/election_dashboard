@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="registration.css">
     <title>User Registration</title>
-    <style>
-        .error { color: red; }
-        .success { color: green; }
-    </style>
+    <link rel="stylesheet" href="registration.css">
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 </head>
 <body>
+    <!-- particles.js container -->
+    <div id="particles-js"></div>
+
     <div class="card">
         <h1>User Registration</h1>
         <form action="/register_user" method="post">
@@ -40,7 +40,15 @@
         <p>Already registered? <a href="/signin.html">Sign in here</a></p>
     </div>
 
+    <!-- stats - count particles -->
+    <div class="count-particles"> <span class="js-count-particles"></span></div>
+
     <script>
+        // Initialize particles.js
+        particlesJS.load('particles-js', 'particlesjs-config.json', function() {
+            console.log('callback - particles.js config loaded');
+        });
+
         // Check if there's an error or success message in the URL query
         const urlParams = new URLSearchParams(window.location.search);
         const errorMessage = urlParams.get('error');

@@ -4,10 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In</title>
-    <link rel="stylesheet" href="signin.css">
+    <link rel="stylesheet" href="signin.css"> <!-- Link to the external CSS file -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
 </head>
 <body>
+    <!-- particles.js container -->
+    <div id="particles-js"></div>
+
     <div class="card">
+        <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/8c/CSUNS.svg/1280px-CSUNS.svg.png" alt="CSUN Logo" class="logo">
+        </div>
         <h1>Sign In</h1>
         <form action="/login" method="post">
             <div>
@@ -24,7 +31,17 @@
         <p>Not registered? <a href="/registration.html">Register here</a></p>
     </div>
 
+    <!-- stats - count particles -->
+    <div class="count-particles">
+        <span class="js-count-particles"></span>
+    </div>
+
     <script>
+        // Initialize particles.js
+        particlesJS.load('particles-js', 'particlesjs-config.json', function() {
+            console.log('callback - particles.js config loaded');
+        });
+
         // Check if there's an error message in the URL query
         const urlParams = new URLSearchParams(window.location.search);
         const errorMessage = urlParams.get('error');
