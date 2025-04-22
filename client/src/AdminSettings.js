@@ -4,24 +4,35 @@ import { useNavigate } from 'react-router-dom';
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
+  const [elections, setElections] = useState([]);
+  const [selectedElectionId, setSelectedElectionId] = useState(1);
   const [selectedMethod, setSelectedMethod] = useState('Instant Runoff');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const navigate = useNavigate();
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
 
   useEffect(() => {
     fetchCandidates();
+    fetchElections();
   }, []);
 
   const fetchCandidates = () => {
     axios.get('/api/admin/candidates')
       .then((response) => {
-        const withFlags = response.data.map(c => ({ ...c, isEditing: false, editName: c.name }));
+        const withFlags = response.data.map(c => ({ ...c, isEditing: false, editName: c.name, editElectionId: c.election_id }));
         setCandidates(withFlags);
       })
       .catch((error) => {
         console.error('Error fetching candidates:', error);
       });
+  };
+
+  const fetchElections = () => {
+    axios.get('/api/admin/elections')
+      .then((response) => setElections(response.data))
+      .catch((error) => console.error('Error fetching elections:', error));
   };
 
   const handleLogout = () => {
@@ -49,10 +60,9 @@ const AdminSettings = () => {
       id: candidate.id,
       is_active: candidate.is_active
     }));
-  
-    // Store method in localStorage
+
     localStorage.setItem('votingMethod', selectedMethod);
-  
+
     axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
         alert(`Candidate statuses updated! Method: ${selectedMethod}`);
@@ -71,7 +81,8 @@ const AdminSettings = () => {
 
     const newCandidate = {
       name: `${firstName} ${lastName}`,
-      is_active: true
+      is_active: true,
+      election_id: selectedElectionId
     };
 
     axios.post('/api/admin/add_candidate', newCandidate)
@@ -107,8 +118,12 @@ const AdminSettings = () => {
   const saveEdit = (id) => {
     const candidate = candidates.find(c => c.id === id);
     if (!candidate.editName.trim()) return alert("Name cannot be empty.");
-
-    axios.post('/api/admin/edit_candidate', { id, name: candidate.editName })
+  
+    axios.post('/api/admin/edit_candidate', {
+      id,
+      name: candidate.editName,
+      election_id: candidate.editElectionId
+    })
       .then(() => {
         fetchCandidates();
       })
@@ -117,7 +132,7 @@ const AdminSettings = () => {
         alert("Error updating the candidate.");
       });
   };
-
+  
   const deleteCandidate = (id) => {
     if (!window.confirm("Delete this candidate?")) return;
 
@@ -131,12 +146,34 @@ const AdminSettings = () => {
       });
   };
 
+  const handleSort = (field) => {
+    const direction = (sortField === field && sortDirection === 'asc') ? 'desc' : 'asc';
+    setSortField(field);
+    setSortDirection(direction);
+  
+    const sorted = [...candidates].sort((a, b) => {
+      let valA = a[field];
+      let valB = b[field];
+  
+      // Normalize string values
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+  
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  
+    setCandidates(sorted);
+  };
+  
+
   const handleBackToDashboard = () => {
     navigate('/');
   };
 
   return (
-    <div style={{ maxWidth: '800pc', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ maxWidth: '1000px', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>Admin Settings: Manage Candidate</h1>
 
       <div style={{
@@ -153,27 +190,24 @@ const AdminSettings = () => {
             placeholder="First Name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '5px',
-              border: '1px solid #ccc',
-              fontSize: '16px'
-            }}
+            style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
           />
           <input
             type="text"
             placeholder="Last Name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '5px',
-              border: '1px solid #ccc',
-              fontSize: '16px'
-            }}
+            style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
           />
+          <select
+            value={selectedElectionId}
+            onChange={(e) => setSelectedElectionId(parseInt(e.target.value))}
+            style={{ padding: '10px', borderRadius: '5px', fontSize: '16px' }}
+          >
+            {elections.map(e => (
+              <option key={e.id} value={e.id}>{e.name}</option>
+            ))}
+          </select>
           <button
             onClick={handleAddCandidate}
             style={{
@@ -190,20 +224,16 @@ const AdminSettings = () => {
         </div>
       </div>
 
-      {/* Back to Dashboard Button */}
-      <div style={{
-        textAlign: 'right',
-        marginBottom: '20px',
-      }}>
-        <button onClick={handleBackToDashboard} 
-        style={{ 
-          backgroundColor: '#6c757d',
-          color: 'white',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          fontSize: '16px'
+      <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+        <button onClick={handleBackToDashboard}
+          style={{
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '16px'
           }}>
           Back to Dashboard
         </button>
@@ -219,8 +249,15 @@ const AdminSettings = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
           <thead>
             <tr style={{ backgroundColor: '#007bff', color: 'white' }}>
-              <th style={{ padding: '10px' }}>Candidate Name</th>
-              <th style={{ padding: '10px' }}>Active</th>
+              <th style={{ padding: '10px', cursor: 'pointer' }} onClick={() => handleSort('name')}>
+                Candidate Name
+              </th>
+              <th style={{ padding: '10px', cursor: 'pointer' }} onClick={() => handleSort('election_id')}>
+                Election ID
+              </th>
+              <th style={{ padding: '10px', cursor: 'pointer' }} onClick={() => handleSort('is_active')}>
+                Active
+              </th>
               <th style={{ padding: '10px' }}>Actions</th>
             </tr>
           </thead>
@@ -235,6 +272,22 @@ const AdminSettings = () => {
                       style={{ width: '100%', padding: '6px' }}
                     />
                   ) : c.name}
+                </td>
+                <td style={{ padding: '10px', textAlign: 'center' }}>
+                  {c.isEditing ? (
+                    <select
+                      value={c.editElectionId}
+                      onChange={(e) =>
+                        setCandidates(prev =>
+                          prev.map(x => x.id === c.id ? { ...x, editElectionId: parseInt(e.target.value) } : x)
+                        )
+                      }
+                    >
+                      {elections.map(e => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </select>
+                  ) : c.election_id}
                 </td>
                 <td style={{ textAlign: 'center' }}>
                   <input
@@ -253,8 +306,7 @@ const AdminSettings = () => {
                         marginRight: '10px',
                         padding: '5px 10px',
                         borderRadius: '4px'
-                      }}
-                    >
+                      }}>
                       Save
                     </button>
                   ) : (
@@ -266,8 +318,7 @@ const AdminSettings = () => {
                         marginRight: '10px',
                         padding: '5px 10px',
                         borderRadius: '4px'
-                      }}
-                    >
+                      }}>
                       Edit
                     </button>
                   )}
@@ -278,8 +329,7 @@ const AdminSettings = () => {
                       color: 'white',
                       padding: '5px 10px',
                       borderRadius: '4px'
-                    }}
-                  >
+                    }}>
                     Delete
                   </button>
                 </td>
@@ -308,15 +358,14 @@ const AdminSettings = () => {
             borderRadius: '5px',
             border: '1px solid #ccc',
             fontSize: '16px'
-  }}
->
-  <option value="Instant Runoff">Instant Runoff</option>
-  <option value="Ranked Pairs">Ranked Pairs</option>
-  <option value="Coombs">Coombs Method</option>
-</select>
+          }}
+        >
+          <option value="Instant Runoff">Instant Runoff</option>
+          <option value="Ranked Pairs">Ranked Pairs</option>
+          <option value="Coombs">Coombs Method</option>
+        </select>
       </div>
 
-      {/* Submit and Logout Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
         <button
           onClick={handleSubmit}
@@ -332,17 +381,17 @@ const AdminSettings = () => {
           Submit
         </button>
 
-        <button 
-          onClick={handleLogout} 
-          style={{ 
+        <button
+          onClick={handleLogout}
+          style={{
             backgroundColor: '#dc3545',
             color: 'white',
             border: 'none',
-            padding: '10px 20px', 
+            padding: '10px 20px',
             borderRadius: '5px',
             cursor: 'pointer',
-            fontSize: '16px' 
-            }}>
+            fontSize: '16px'
+          }}>
           Logout
         </button>
       </div>
