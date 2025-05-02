@@ -230,6 +230,21 @@ app.post('/api/admin/edit_candidate', verifyJWT, isAdmin, (req, res) => {
 });
 
 
+app.post('/api/admin/update_user_election', verifyJWT, isAdmin, (req, res) => {
+  const { user_id, election_id } = req.body;
+  if (!user_id || !election_id) {
+    return res.status(400).json({ message: 'Missing user_id or election_id' });
+  }
+
+  const query = 'UPDATE users SET election_id = ? WHERE id = ?';
+  db.query(query, [election_id, user_id], (err, result) => {
+    if (err) {
+      console.error('Error updating user election:', err);
+      return res.status(500).json({ message: 'Error updating user election' });
+    }
+    res.status(200).json({ message: 'User election updated successfully' });
+  });
+});
 
 // JWT verification middleware
 function verifyJWT(req, res, next) {

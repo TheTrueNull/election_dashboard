@@ -12,11 +12,26 @@ const AdminSettings = () => {
   const navigate = useNavigate();
   const [sortField, setSortField] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
-
+  const [users, setUsers] = useState([]);
   useEffect(() => {
     fetchCandidates();
     fetchElections();
+    fetchUsers();
   }, []);
+
+
+  const fetchUsers = () => {
+    axios.get('/api/admin/users')
+      .then((response) => {
+        const withEdit = response.data.map(u => ({
+          ...u,
+          isEditing: false,
+          editElectionId: u.election_id
+        }));
+        setUsers(withEdit);
+      })
+      .catch((error) => console.error('Error fetching users:', error));
+  };
 
   const fetchCandidates = () => {
     axios.get('/api/admin/candidates')
@@ -144,6 +159,24 @@ const AdminSettings = () => {
         console.error("Error deleting candidate:", error);
         alert("Error deleting the candidate.");
       });
+  };
+
+  const handleUserEditToggle = (id) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, isEditing: !u.isEditing } : { ...u, isEditing: false }));
+  };
+  
+  const handleUserElectionChange = (id, value) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, editElectionId: parseInt(value) } : u));
+  };
+  
+  const handleUserSave = (id) => {
+    const user = users.find(u => u.id === id);
+    axios.post('/api/admin/update_user_election', {
+      user_id: id,
+      election_id: user.editElectionId
+    })
+      .then(() => fetchUsers())
+      .catch((err) => alert("Error updating user election."));
   };
 
   const handleSort = (field) => {
@@ -338,7 +371,47 @@ const AdminSettings = () => {
           </tbody>
         </table>
       </div>
-
+      <div style={{
+  backgroundColor: '#fff',
+  padding: '15px',
+  borderRadius: '8px',
+  marginTop: '30px',
+  boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)'
+}}>
+  <h2>Assign Users to Elections</h2>
+  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+    <thead>
+      <tr style={{ backgroundColor: '#007bff', color: 'white' }}>
+        <th style={{ padding: '10px' }}>Username</th>
+        <th style={{ padding: '10px' }}>Election</th>
+        <th style={{ padding: '10px' }}>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {users.map((u, index) => (
+        <tr key={u.id} style={{ backgroundColor: index % 2 === 0 ? '#f2f2f2' : '#fff' }}>
+          <td style={{ padding: '10px' }}>{u.username}</td>
+          <td style={{ padding: '10px' }}>
+            {u.isEditing ? (
+              <select value={u.editElectionId} onChange={(e) => handleUserElectionChange(u.id, e.target.value)}>
+                {elections.map(e => (
+                  <option key={e.id} value={e.id}>{e.name}</option>
+                ))}
+              </select>
+            ) : u.election_id}
+          </td>
+          <td style={{ padding: '10px' }}>
+            {u.isEditing ? (
+              <button onClick={() => handleUserSave(u.id)}>Save</button>
+            ) : (
+              <button onClick={() => handleUserEditToggle(u.id)}>Edit</button>
+            )}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
       <div style={{
         marginTop: '20px',
         backgroundColor: '#f9f9f9',
