@@ -205,9 +205,9 @@ app.get('/api/admin/candidates', verifyJWT, isAdmin, (req, res) => {
     // Map 'active' to 'is_active' to match frontend expectations
     const candidates = results.map(candidate => ({
       ...candidate,
-      is_active: candidate.active,  // Map 'active' to 'is_active'
-      election_id: candidate.election_id // new field included
-    }));
+      is_active: candidate.active,
+      election_id: candidate.election_id
+    }));    
     res.json(candidates);
   });
 });
