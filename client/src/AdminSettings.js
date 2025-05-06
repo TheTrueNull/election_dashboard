@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext } from 'react'; // 🔥 New: Import useContext
+import React, { useState, useEffect, useContext } from 'react'; // Import useContext
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { DarkModeContext } from './DarkModeContext'; // 🔥 New: Import DarkModeContext
+import { DarkModeContext } from './DarkModeContext'; // Import DarkModeContext
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
@@ -11,7 +11,7 @@ const AdminSettings = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
-  const { darkMode, toggleDarkMode } = useContext(DarkModeContext); // 🔥 Use context instead of local darkMode useState
+  const { darkMode, toggleDarkMode } = useContext(DarkModeContext); // Use context instead of local darkMode useState
 
   const navigate = useNavigate();
 
