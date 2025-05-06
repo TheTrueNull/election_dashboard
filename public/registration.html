@@ -36,6 +36,9 @@
       
           <button type="submit">Register</button>
         </form>
+        <div id="redirect-box" class="fade-box">
+            Registration successful! Redirecting to sign in...
+          </div>          
         <p>Already registered? <a href="signin.html">Sign in here</a></p>
       </div>
       
@@ -100,8 +103,11 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          alert("Registration successful! Redirecting...");
-          window.location.href = '/signin.html';
+            const box = document.getElementById('redirect-box');
+            box.classList.add('show');
+          setTimeout(() => {
+            window.location.href = 'signin.html';
+        }, 3000);
         } else {
           alert(data.message || "Registration failed.");
         }

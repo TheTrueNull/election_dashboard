@@ -97,3 +97,19 @@ a:hover {
     font-size: 14px;
     margin-top: 10px;
 }
+
+.fade-box { /*Redirect screen after registering*/
+    display: none;
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+    opacity: 0;
+    transition: opacity 1s ease-in;
+}
+.fade-box.show {
+    display: block;
+    opacity: 1;
+}
