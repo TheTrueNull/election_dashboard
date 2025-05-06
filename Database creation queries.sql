@@ -110,11 +110,16 @@ ALTER TABLE users ADD FOREIGN KEY (election_id) REFERENCES elections(id);
 
 -- Add election_id to candidates
 ALTER TABLE candidates ADD COLUMN election_id INT;
-ALTER TABLE candidates ADD FOREIGN KEY (election_id) REFERENCES elections(id);
+
+ALTER TABLE candidates
+  ADD CONSTRAINT fk_candidates_election
+  FOREIGN KEY (election_id) REFERENCES elections(id)
+  ON DELETE SET NULL;
+
 
 -- Add election_id to ballots
 ALTER TABLE ballots ADD COLUMN election_id INT;
-ALTER TABLE ballots ADD FOREIGN KEY (election_id) REFERENCES elections(id)
+ALTER TABLE ballots ADD FOREIGN KEY (election_id) REFERENCES elections(id);
 
 UPDATE users SET role_id = '1' WHERE username = 'testuser1';
 UPDATE users SET role_id = '2' WHERE username = 'testuser2';
