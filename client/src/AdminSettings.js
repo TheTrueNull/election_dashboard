@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react'; // Import useContext
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { DarkModeContext } from './DarkModeContext'; // Import DarkModeContext
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
@@ -9,10 +10,11 @@ const AdminSettings = () => {
   const [selectedMethod, setSelectedMethod] = useState('Instant Runoff');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+
+  const { darkMode, toggleDarkMode } = useContext(DarkModeContext); // Use context instead of local darkMode useState
+
   const navigate = useNavigate();
-  const [sortField, setSortField] = useState(null);
-  const [sortDirection, setSortDirection] = useState('asc');
-  const [users, setUsers] = useState([]);
+
   useEffect(() => {
     fetchCandidates();
     fetchElections();
@@ -57,8 +59,8 @@ const AdminSettings = () => {
   };
 
   const handleCheckboxChange = (candidateId) => {
-    setCandidates((prev) =>
-      prev.map((candidate) =>
+    setCandidates(prev =>
+      prev.map(candidate =>
         candidate.id === candidateId
           ? { ...candidate, is_active: !candidate.is_active }
           : candidate
@@ -113,8 +115,8 @@ const AdminSettings = () => {
   };
 
   const toggleEdit = (id) => {
-    setCandidates((prev) =>
-      prev.map((c) =>
+    setCandidates(prev =>
+      prev.map(c =>
         c.id === id
           ? { ...c, isEditing: !c.isEditing, editName: c.name }
           : { ...c, isEditing: false }
@@ -123,8 +125,8 @@ const AdminSettings = () => {
   };
 
   const handleEditChange = (id, value) => {
-    setCandidates((prev) =>
-      prev.map((c) =>
+    setCandidates(prev =>
+      prev.map(c =>
         c.id === id ? { ...c, editName: value } : c
       )
     );
@@ -133,17 +135,13 @@ const AdminSettings = () => {
   const saveEdit = (id) => {
     const candidate = candidates.find(c => c.id === id);
     if (!candidate.editName.trim()) return alert("Name cannot be empty.");
-  
-    axios.post('/api/admin/edit_candidate', {
-      id,
-      name: candidate.editName,
-      election_id: candidate.editElectionId
-    })
+
+    axios.post('/api/admin/edit_candidate', { id, name: candidate.editName })
       .then(() => {
         fetchCandidates();
       })
       .catch((error) => {
-        console.error("Error editing candidate:", error);
+        console.error('Error editing candidate:', error);
         alert("Error updating the candidate.");
       });
   };
@@ -156,7 +154,7 @@ const AdminSettings = () => {
         fetchCandidates();
       })
       .catch((error) => {
-        console.error("Error deleting candidate:", error);
+        console.error('Error deleting candidate:', error);
         alert("Error deleting the candidate.");
       });
   };
@@ -206,15 +204,16 @@ const AdminSettings = () => {
   };
 
   return (
-    <div style={{ maxWidth: '1000px', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ maxWidth: '800pc', margin: 'auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>Admin Settings: Manage Candidate</h1>
 
+      {/* Add Candidate Section */}
       <div style={{
-        backgroundColor: '#f9f9f9',
+        backgroundColor: darkMode ? '#3a3a3a' : '#f9f9f9',
         padding: '15px',
         borderRadius: '8px',
         marginBottom: '20px',
-        boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)'
+        boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
       }}>
         <h2>Add Candidate</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -252,31 +251,36 @@ const AdminSettings = () => {
               cursor: 'pointer',
               fontSize: '16px'
             }}>
-            Add Candidate
+            Add
           </button>
         </div>
       </div>
 
-      <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-        <button onClick={handleBackToDashboard}
-          style={{
-            backgroundColor: '#6c757d',
-            color: 'white',
-            border: 'none',
-            padding: '10px 20px',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            fontSize: '16px'
+      {/* Back to Dashboard Button */}
+      <div style={{
+        textAlign: 'right',
+        marginBottom: '20px',
+      }}>
+        <button onClick={handleBackToDashboard} 
+        style={{ 
+          backgroundColor: '#6c757d',
+          color: 'white',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          fontSize: '16px'
           }}>
           Back to Dashboard
         </button>
       </div>
 
+      {/* Manage Candidate Table */}
       <div style={{
-        backgroundColor: '#fff',
+        backgroundColor: darkMode ? '#3a3a3a' : '#fff',
         padding: '15px',
         borderRadius: '8px',
-        boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)'
+        boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
       }}>
         <h2>Manage Candidate Status</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
@@ -296,7 +300,7 @@ const AdminSettings = () => {
           </thead>
           <tbody>
             {candidates.map((c, index) => (
-              <tr key={c.id} style={{ backgroundColor: index % 2 === 0 ? '#f2f2f2' : '#fff' }}>
+              <tr key={c.id} style={{ backgroundColor: index % 2 === 0 ? (darkMode ? '#2e2e2e' : '#f2f2f2') : (darkMode ? '#3a3a3a' : '#fff') }}>
                 <td style={{ padding: '10px' }}>
                   {c.isEditing ? (
                     <input
@@ -371,53 +375,13 @@ const AdminSettings = () => {
           </tbody>
         </table>
       </div>
-      <div style={{
-  backgroundColor: '#fff',
-  padding: '15px',
-  borderRadius: '8px',
-  marginTop: '30px',
-  boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)'
-}}>
-  <h2>Assign Users to Elections</h2>
-  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-    <thead>
-      <tr style={{ backgroundColor: '#007bff', color: 'white' }}>
-        <th style={{ padding: '10px' }}>Username</th>
-        <th style={{ padding: '10px' }}>Election</th>
-        <th style={{ padding: '10px' }}>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {users.map((u, index) => (
-        <tr key={u.id} style={{ backgroundColor: index % 2 === 0 ? '#f2f2f2' : '#fff' }}>
-          <td style={{ padding: '10px' }}>{u.username}</td>
-          <td style={{ padding: '10px' }}>
-            {u.isEditing ? (
-              <select value={u.editElectionId} onChange={(e) => handleUserElectionChange(u.id, e.target.value)}>
-                {elections.map(e => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
-              </select>
-            ) : u.election_id}
-          </td>
-          <td style={{ padding: '10px' }}>
-            {u.isEditing ? (
-              <button onClick={() => handleUserSave(u.id)}>Save</button>
-            ) : (
-              <button onClick={() => handleUserEditToggle(u.id)}>Edit</button>
-            )}
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+
       <div style={{
         marginTop: '20px',
-        backgroundColor: '#f9f9f9',
+        backgroundColor: darkMode ? '#3a3a3a' : '#f9f9f9',
         padding: '15px',
         borderRadius: '8px',
-        boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)'
+        boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
       }}>
         <label htmlFor="voting-method" style={{ fontSize: '16px', marginRight: '10px' }}>
           Select Voting Method:
@@ -439,6 +403,7 @@ const AdminSettings = () => {
         </select>
       </div>
 
+      {/* Submit and Logout Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
         <button
           onClick={handleSubmit}
