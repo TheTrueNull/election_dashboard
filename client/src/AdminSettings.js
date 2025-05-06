@@ -1,13 +1,20 @@
+import React, { useState, useEffect, useContext } from 'react'; // Import useContext
 import React, { useState, useEffect, useContext } from 'react'; // 🔥 New: Import useContext
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { DarkModeContext } from './DarkModeContext'; // Import DarkModeContext
 import { DarkModeContext } from './DarkModeContext'; // 🔥 New: Import DarkModeContext
 
 const AdminSettings = () => {
   const [candidates, setCandidates] = useState([]);
+  const [elections, setElections] = useState([]);
+  const [selectedElectionId, setSelectedElectionId] = useState(1);
   const [selectedMethod, setSelectedMethod] = useState('Instant Runoff');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+
+  const { darkMode, toggleDarkMode } = useContext(DarkModeContext); // Use context instead of local darkMode useState
+
 
   const { darkMode, toggleDarkMode } = useContext(DarkModeContext); // 🔥 Use context instead of local darkMode useState
 
@@ -16,17 +23,39 @@ const AdminSettings = () => {
   // Fetch candidates when the page loads
   useEffect(() => {
     fetchCandidates();
+    fetchElections();
+    fetchUsers();
   }, []);
+
+
+  const fetchUsers = () => {
+    axios.get('/api/admin/users')
+      .then((response) => {
+        const withEdit = response.data.map(u => ({
+          ...u,
+          isEditing: false,
+          editElectionId: u.election_id
+        }));
+        setUsers(withEdit);
+      })
+      .catch((error) => console.error('Error fetching users:', error));
+  };
 
   const fetchCandidates = () => {
     axios.get('/api/admin/candidates')
       .then((response) => {
-        const withFlags = response.data.map(c => ({ ...c, isEditing: false, editName: c.name }));
+        const withFlags = response.data.map(c => ({ ...c, isEditing: false, editName: c.name, editElectionId: c.election_id }));
         setCandidates(withFlags);
       })
       .catch((error) => {
         console.error('Error fetching candidates:', error);
       });
+  };
+
+  const fetchElections = () => {
+    axios.get('/api/admin/elections')
+      .then((response) => setElections(response.data))
+      .catch((error) => console.error('Error fetching elections:', error));
   };
 
   const handleLogout = () => {
@@ -36,6 +65,8 @@ const AdminSettings = () => {
   };
 
   const handleCheckboxChange = (candidateId) => {
+    setCandidates(prev =>
+      prev.map(candidate =>
     setCandidates(prev =>
       prev.map(candidate =>
         candidate.id === candidateId
@@ -55,7 +86,9 @@ const AdminSettings = () => {
       is_active: candidate.is_active
     }));
 
+
     localStorage.setItem('votingMethod', selectedMethod);
+
 
     axios.post('/api/admin/update_candidates', { updatedStatuses })
       .then(() => {
@@ -75,7 +108,8 @@ const AdminSettings = () => {
 
     const newCandidate = {
       name: `${firstName} ${lastName}`,
-      is_active: true
+      is_active: true,
+      election_id: selectedElectionId
     };
 
     axios.post('/api/admin/add_candidate', newCandidate)
@@ -93,6 +127,8 @@ const AdminSettings = () => {
   const toggleEdit = (id) => {
     setCandidates(prev =>
       prev.map(c =>
+    setCandidates(prev =>
+      prev.map(c =>
         c.id === id
           ? { ...c, isEditing: !c.isEditing, editName: c.name }
           : { ...c, isEditing: false }
@@ -101,6 +137,8 @@ const AdminSettings = () => {
   };
 
   const handleEditChange = (id, value) => {
+    setCandidates(prev =>
+      prev.map(c =>
     setCandidates(prev =>
       prev.map(c =>
         c.id === id ? { ...c, editName: value } : c
@@ -121,10 +159,11 @@ const AdminSettings = () => {
       })
       .catch((error) => {
         console.error('Error editing candidate:', error);
+        console.error('Error editing candidate:', error);
         alert("Error updating the candidate.");
       });
   };
-
+  
   const deleteCandidate = (id) => {
     if (!window.confirm("Delete this candidate?")) return;
 
@@ -134,9 +173,50 @@ const AdminSettings = () => {
       })
       .catch((error) => {
         console.error('Error deleting candidate:', error);
+        console.error('Error deleting candidate:', error);
         alert("Error deleting the candidate.");
       });
   };
+
+  const handleUserEditToggle = (id) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, isEditing: !u.isEditing } : { ...u, isEditing: false }));
+  };
+  
+  const handleUserElectionChange = (id, value) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, editElectionId: parseInt(value) } : u));
+  };
+  
+  const handleUserSave = (id) => {
+    const user = users.find(u => u.id === id);
+    axios.post('/api/admin/update_user_election', {
+      user_id: id,
+      election_id: user.editElectionId
+    })
+      .then(() => fetchUsers())
+      .catch((err) => alert("Error updating user election."));
+  };
+
+  const handleSort = (field) => {
+    const direction = (sortField === field && sortDirection === 'asc') ? 'desc' : 'asc';
+    setSortField(field);
+    setSortDirection(direction);
+  
+    const sorted = [...candidates].sort((a, b) => {
+      let valA = a[field];
+      let valB = b[field];
+  
+      // Normalize string values
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+  
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  
+    setCandidates(sorted);
+  };
+  
 
   const handleBackToDashboard = () => {
     navigate('/');
@@ -175,11 +255,14 @@ const AdminSettings = () => {
       <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>Admin Settings: Manage Candidates</h1>
 
       {/* Add Candidate Section */}
+      {/* Add Candidate Section */}
       <div style={{
+        backgroundColor: darkMode ? '#3a3a3a' : '#f9f9f9',
         backgroundColor: darkMode ? '#3a3a3a' : '#f9f9f9',
         padding: '15px',
         borderRadius: '8px',
         marginBottom: '20px',
+        boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
         boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
       }}>
         <h2>Add Candidate</h2>
@@ -189,27 +272,24 @@ const AdminSettings = () => {
             placeholder="First Name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '5px',
-              border: '1px solid #ccc',
-              fontSize: '16px'
-            }}
+            style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
           />
           <input
             type="text"
             placeholder="Last Name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '5px',
-              border: '1px solid #ccc',
-              fontSize: '16px'
-            }}
+            style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
           />
+          <select
+            value={selectedElectionId}
+            onChange={(e) => setSelectedElectionId(parseInt(e.target.value))}
+            style={{ padding: '10px', borderRadius: '5px', fontSize: '16px' }}
+          >
+            {elections.map(e => (
+              <option key={e.id} value={e.id}>{e.name}</option>
+            ))}
+          </select>
           <button
             onClick={handleAddCandidate}
             style={{
@@ -221,6 +301,7 @@ const AdminSettings = () => {
               cursor: 'pointer',
               fontSize: '16px'
             }}>
+            Add
             Add
           </button>
         </div>
@@ -245,23 +326,34 @@ const AdminSettings = () => {
       </div>
 
       {/* Manage Candidate Table */}
+      {/* Manage Candidate Table */}
       <div style={{
+        backgroundColor: darkMode ? '#3a3a3a' : '#fff',
         backgroundColor: darkMode ? '#3a3a3a' : '#fff',
         padding: '15px',
         borderRadius: '8px',
+        boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
         boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
       }}>
         <h2>Manage Candidate Status</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
           <thead>
             <tr style={{ backgroundColor: '#007bff', color: 'white' }}>
-              <th style={{ padding: '10px' }}>Candidate Name</th>
-              <th style={{ padding: '10px' }}>Active</th>
+              <th style={{ padding: '10px', cursor: 'pointer' }} onClick={() => handleSort('name')}>
+                Candidate Name
+              </th>
+              <th style={{ padding: '10px', cursor: 'pointer' }} onClick={() => handleSort('election_id')}>
+                Election ID
+              </th>
+              <th style={{ padding: '10px', cursor: 'pointer' }} onClick={() => handleSort('is_active')}>
+                Active
+              </th>
               <th style={{ padding: '10px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {candidates.map((c, index) => (
+              <tr key={c.id} style={{ backgroundColor: index % 2 === 0 ? (darkMode ? '#2e2e2e' : '#f2f2f2') : (darkMode ? '#3a3a3a' : '#fff') }}>
               <tr key={c.id} style={{ backgroundColor: index % 2 === 0 ? (darkMode ? '#2e2e2e' : '#f2f2f2') : (darkMode ? '#3a3a3a' : '#fff') }}>
                 <td style={{ padding: '10px' }}>
                   {c.isEditing ? (
@@ -271,6 +363,22 @@ const AdminSettings = () => {
                       style={{ width: '100%', padding: '6px' }}
                     />
                   ) : c.name}
+                </td>
+                <td style={{ padding: '10px', textAlign: 'center' }}>
+                  {c.isEditing ? (
+                    <select
+                      value={c.editElectionId}
+                      onChange={(e) =>
+                        setCandidates(prev =>
+                          prev.map(x => x.id === c.id ? { ...x, editElectionId: parseInt(e.target.value) } : x)
+                        )
+                      }
+                    >
+                      {elections.map(e => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </select>
+                  ) : c.election_id}
                 </td>
                 <td style={{ textAlign: 'center' }}>
                   <input
@@ -289,8 +397,7 @@ const AdminSettings = () => {
                         marginRight: '10px',
                         padding: '5px 10px',
                         borderRadius: '4px'
-                      }}
-                    >
+                      }}>
                       Save
                     </button>
                   ) : (
@@ -302,8 +409,7 @@ const AdminSettings = () => {
                         marginRight: '10px',
                         padding: '5px 10px',
                         borderRadius: '4px'
-                      }}
-                    >
+                      }}>
                       Edit
                     </button>
                   )}
@@ -314,8 +420,7 @@ const AdminSettings = () => {
                       color: 'white',
                       padding: '5px 10px',
                       borderRadius: '4px'
-                    }}
-                  >
+                    }}>
                     Delete
                   </button>
                 </td>
@@ -329,8 +434,10 @@ const AdminSettings = () => {
       <div style={{
         marginTop: '20px',
         backgroundColor: darkMode ? '#3a3a3a' : '#f9f9f9',
+        backgroundColor: darkMode ? '#3a3a3a' : '#f9f9f9',
         padding: '15px',
         borderRadius: '8px',
+        boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
         boxShadow: darkMode ? '0px 2px 5px rgba(255, 255, 255, 0.1)' : '0px 2px 5px rgba(0, 0, 0, 0.1)'
       }}>
         <label htmlFor="voting-method" style={{ fontSize: '16px', marginRight: '10px' }}>
@@ -345,6 +452,12 @@ const AdminSettings = () => {
             borderRadius: '5px',
             border: '1px solid #ccc',
             fontSize: '16px'
+          }}
+        >
+          <option value="Instant Runoff">Instant Runoff</option>
+          <option value="Ranked Pairs">Ranked Pairs</option>
+          <option value="Coombs">Coombs Method</option>
+        </select>
           }}
         >
           <option value="Instant Runoff">Instant Runoff</option>
@@ -372,12 +485,18 @@ const AdminSettings = () => {
         <button
           onClick={handleLogout}
           style={{
+        <button
+          onClick={handleLogout}
+          style={{
             backgroundColor: '#dc3545',
             color: 'white',
             border: 'none',
             padding: '10px 20px',
+            padding: '10px 20px',
             borderRadius: '5px',
             cursor: 'pointer',
+            fontSize: '16px'
+          }}>
             fontSize: '16px'
           }}>
           Logout

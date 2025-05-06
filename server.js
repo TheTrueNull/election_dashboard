@@ -50,8 +50,8 @@ app.post('/register_user', (req, res) => {
       }
 
       // Insert new user with default role_id = 2 (Voter)
-      const insertQuery = 'INSERT INTO users (username, password, email, role_id) VALUES (?, ?, ?, ?)';
-      db.query(insertQuery, [username, hash, email, 2], (err, result) => {
+      const query = 'INSERT INTO users (username, email, password, role_id, election_id) VALUES (?, ?, ?, ?, ?)';
+      db.query(query, [username, email, password, 2, 1], (err, result) => {
         if (err) {
           console.error('Error inserting new user:', err);
           return res.status(500).json({ message: 'Error inserting new user' });
@@ -110,20 +110,30 @@ app.post('/login', (req, res) => {
 });
 
 // Fetch active candidates for the dashboard
-app.get('/api/candidates', (req, res) => {
-  const query = 'SELECT id, name FROM candidates WHERE active = TRUE';
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error('Error fetching active candidates:', err);
-      return res.status(500).json({ message: 'Error fetching candidates' });
+app.get('/api/candidates', verifyJWT, (req, res) => {
+  const userId = req.user.id;
+
+  const getElectionQuery = 'SELECT election_id FROM users WHERE id = ?';
+  db.query(getElectionQuery, [userId], (err, result) => {
+    if (err || result.length === 0) {
+      return res.status(400).json({ message: 'Unable to find user election.' });
     }
-    res.json(results);
+
+    const electionId = result[0].election_id;
+
+    const candidateQuery = 'SELECT * FROM candidates WHERE election_id = ? AND active = TRUE';
+    db.query(candidateQuery, [electionId], (err, candidates) => {
+      if (err) {
+        return res.status(500).json({ message: 'Error fetching candidates' });
+      }
+      res.json(candidates);
+    });
   });
 });
 
 // Fetch all candidates for the Admin Settings page
 app.get('/api/admin/candidates', verifyJWT, isAdmin, (req, res) => {
-  const query = 'SELECT id, name, active FROM candidates';
+  const query = 'SELECT id, name, active, election_id FROM candidates';
   db.query(query, (err, results) => {
     if (err) {
       console.error('Error fetching candidates:', err);
@@ -133,6 +143,7 @@ app.get('/api/admin/candidates', verifyJWT, isAdmin, (req, res) => {
     const candidates = results.map(candidate => ({
       ...candidate,
       is_active: candidate.active,  // Map 'active' to 'is_active'
+      election_id: candidate.election_id // new field included
     }));
     res.json(candidates);
   });
@@ -199,26 +210,41 @@ app.post('/api/admin/delete_candidates', verifyJWT, isAdmin, (req, res) => {
 
 // Update candidate name
 app.post('/api/admin/edit_candidate', verifyJWT, isAdmin, (req, res) => {
-  const { id, name } = req.body;
+  const { id, name, election_id } = req.body;
 
   if (!id || !name || name.trim() === "") {
     return res.status(400).json({ message: 'Candidate ID and new name are required' });
   }
 
-  const query = 'UPDATE candidates SET name = ? WHERE id = ?';
-  db.query(query, [name, id], (err, result) => {
+  const query = 'UPDATE candidates SET name = ?, election_id = ? WHERE id = ?';
+  db.query(query, [name, election_id, id], (err, result) => {
     if (err) {
       console.error('Error updating candidate:', err);
-      return res.status(500).json({ message: 'Error updating candidate name' });
+      return res.status(500).json({ message: 'Error updating candidate' });
     }
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Candidate not found' });
     }
-    res.status(200).json({ message: 'Candidate name updated successfully' });
+    res.status(200).json({ message: 'Candidate updated successfully' });
   });
 });
 
 
+app.post('/api/admin/update_user_election', verifyJWT, isAdmin, (req, res) => {
+  const { user_id, election_id } = req.body;
+  if (!user_id || !election_id) {
+    return res.status(400).json({ message: 'Missing user_id or election_id' });
+  }
+
+  const query = 'UPDATE users SET election_id = ? WHERE id = ?';
+  db.query(query, [election_id, user_id], (err, result) => {
+    if (err) {
+      console.error('Error updating user election:', err);
+      return res.status(500).json({ message: 'Error updating user election' });
+    }
+    res.status(200).json({ message: 'User election updated successfully' });
+  });
+});
 
 // JWT verification middleware
 function verifyJWT(req, res, next) {
@@ -242,77 +268,117 @@ function generateBallotId() {
   return crypto.randomUUID();  // Generates a 36-character UUID
 }
 
-// Handle ballot submission
-app.post('/api/submit_ballot', (req, res) => {
-  const ballot = req.body; // Expecting an array of candidate_id and rank
-  const ballotId = generateBallotId(); // Generate a unique ballot ID
 
-  const insertQuery = 'INSERT INTO ballots (ballot_id, candidate_id, rankno) VALUES ?';
-
-  const ballotValues = ballot.map(({ candidate_id, rank }) => [ballotId, candidate_id, rank]);
-
-  // Insert the ranked candidates into the ballots table
-  db.query(insertQuery, [ballotValues], (err, result) => {
-    if (err) {
-      console.error('Error inserting ballot:', err);
-      return res.status(500).json({ message: 'Error submitting ballot' });
-    }
-
-    res.status(200).json({ message: 'Ballot submitted successfully' });
+app.get('/api/admin/elections', (req, res) => {
+  db.query('SELECT * FROM elections', (err, results) => {
+    if (err) return res.status(500).json({ message: 'Error loading elections' });
+    res.json(results);
   });
 });
 
-// Function to calculate the winner using Instant Runoff Voting
-app.get('/api/calculate_winner', (req, res) => {
-  const method = req.headers['x-voting-method'] || 'Instant Runoff';
+// Handle ballot submission
+app.post('/api/submit_ballot', verifyJWT, (req, res) => {
+  const userId = req.user.id;
+  const ballot = req.body; // Expecting an array of { candidate_id, rank }
+  const ballotId = generateBallotId();
 
-  const getBallotsQuery = 'SELECT ballot_id, candidate_id, rankno FROM ballots ORDER BY ballot_id, rankno';
-  const getCandidatesQuery = 'SELECT * FROM candidates WHERE id IN (SELECT DISTINCT candidate_id FROM ballots)';
-
-  db.query(getCandidatesQuery, (err, candidateResults) => {
-    console.log("Eligible candidates:", candidateResults.map(c => c.name));
-    if (err) {
-      console.error('Error fetching candidates:', err);
-      return res.status(500).json({ message: 'Error fetching candidates' });
+  // Get the user's election_id
+  const getElectionQuery = 'SELECT election_id FROM users WHERE id = ?';
+  db.query(getElectionQuery, [userId], (err, result) => {
+    if (err || result.length === 0) {
+      console.error('Error retrieving user election:', err);
+      return res.status(500).json({ message: 'Error retrieving user election' });
     }
 
-    db.query(getBallotsQuery, (err, ballotResults) => {
+    const electionId = result[0].election_id;
+
+    // Build the insert values with election_id
+    const ballotValues = ballot.map(({ candidate_id, rank }) => [
+      ballotId,
+      candidate_id,
+      rank,
+      electionId
+    ]);
+
+    const insertQuery = 'INSERT INTO ballots (ballot_id, candidate_id, rankno, election_id) VALUES ?';
+
+    db.query(insertQuery, [ballotValues], (err, result) => {
       if (err) {
-        console.error('Error fetching ballots:', err);
-        return res.status(500).json({ message: 'Error fetching ballots' });
+        console.error('Error inserting ballot:', err);
+        return res.status(500).json({ message: 'Error submitting ballot' });
       }
 
-      const ballots = {};
-      ballotResults.forEach(row => {
-        if (!ballots[row.ballot_id]) {
-          ballots[row.ballot_id] = [];
+      res.status(200).json({ message: 'Ballot submitted successfully' });
+    });
+  });
+});
+
+
+
+app.get('/api/calculate_winner', verifyJWT, (req, res) => {
+  const userId = req.user.id;
+  const method = req.headers['x-voting-method'] || 'Instant Runoff';
+
+  // Step 1: Get election_id for current user
+  const getElectionQuery = 'SELECT election_id FROM users WHERE id = ?';
+  db.query(getElectionQuery, [userId], (err, userResult) => {
+    if (err || userResult.length === 0) {
+      console.error('Error retrieving election ID for user:', err);
+      return res.status(500).json({ message: 'Error retrieving election ID' });
+    }
+
+    const electionId = userResult[0].election_id;
+
+    // Step 2: Get candidates and ballots for this election
+    const getCandidatesQuery = `
+      SELECT * FROM candidates 
+      WHERE election_id = ? AND id IN (
+        SELECT DISTINCT candidate_id FROM ballots WHERE election_id = ?
+      )`;
+
+    const getBallotsQuery = `
+      SELECT ballot_id, candidate_id, rankno 
+      FROM ballots 
+      WHERE election_id = ? 
+      ORDER BY ballot_id, rankno`;
+
+    db.query(getCandidatesQuery, [electionId, electionId], (err, candidateResults) => {
+      if (err) {
+        console.error('Error fetching candidates:', err);
+        return res.status(500).json({ message: 'Error fetching candidates' });
+      }
+
+      db.query(getBallotsQuery, [electionId], (err, ballotResults) => {
+        if (err) {
+          console.error('Error fetching ballots:', err);
+          return res.status(500).json({ message: 'Error fetching ballots' });
         }
-        ballots[row.ballot_id].push({ candidate_id: row.candidate_id, rankno: row.rankno });
+
+        // Build ballot structure
+        const ballots = {};
+        ballotResults.forEach(row => {
+          if (!ballots[row.ballot_id]) ballots[row.ballot_id] = [];
+          ballots[row.ballot_id].push({ candidate_id: row.candidate_id, rankno: row.rankno });
+        });
+
+        // Step 3: Run the selected voting algorithm
+        if (method === 'Ranked Pairs') {
+          const winner = calculateRankedPairsWinner(ballots, candidateResults);
+          return winner
+            ? res.status(200).json({ winner: winner.name })
+            : res.status(500).json({ message: 'Could not determine a Ranked Pairs winner' });
+        } else if (method === 'Coombs') {
+          const winner = calculateCoombsWinner(ballots, candidateResults);
+          return winner
+            ? res.status(200).json({ winner: winner.name })
+            : res.status(500).json({ message: 'Could not determine a Coombs winner' });
+        } else {
+          const winner = calculateIRVWinner(ballots, candidateResults);
+          return winner
+            ? res.status(200).json({ winner: winner.name })
+            : res.status(500).json({ message: 'Could not determine an IRV winner' });
+        }
       });
-
-      //Use selected method
-      if (method === 'Ranked Pairs') {
-        const rpWinner = calculateRankedPairsWinner(ballots, candidateResults);
-        if (rpWinner) {
-          return res.status(200).json({ winner: rpWinner.name });
-        } else {
-          return res.status(500).json({ message: 'Could not determine a Ranked Pairs winner' });
-        }
-      } else if (method === 'Coombs') {
-        const coombsWinner = calculateCoombsWinner(ballots, candidateResults);
-        if (coombsWinner) {
-          return res.status(200).json({ winner: coombsWinner.name });
-        } else {
-          return res.status(500).json({ message: 'Could not determine a Coombs Method winner' });
-        }
-      } else {
-        const irvWinner = calculateIRVWinner(ballots, candidateResults);
-        if (irvWinner) {
-          return res.status(200).json({ winner: irvWinner.name });
-        } else {
-          return res.status(500).json({ message: 'Could not determine an IRV winner' });
-        }
-      }
     });
   });
 });

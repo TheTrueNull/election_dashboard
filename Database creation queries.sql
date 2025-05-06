@@ -95,7 +95,26 @@ VALUES
     ('Das Desonble'),
     ('Goo DePresident');
     
-    
+-- Create Elections Table
+CREATE TABLE elections (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+-- Seed default elections
+INSERT INTO elections (name) VALUES ('Election 1'), ('Election 2'), ('Election 3');
+
+-- Add election_id to users
+ALTER TABLE users ADD COLUMN election_id INT DEFAULT 1;
+ALTER TABLE users ADD FOREIGN KEY (election_id) REFERENCES elections(id);
+
+-- Add election_id to candidates
+ALTER TABLE candidates ADD COLUMN election_id INT;
+ALTER TABLE candidates ADD FOREIGN KEY (election_id) REFERENCES elections(id);
+
+-- Add election_id to ballots
+ALTER TABLE ballots ADD COLUMN election_id INT;
+ALTER TABLE ballots ADD FOREIGN KEY (election_id) REFERENCES elections(id)
 
 UPDATE users SET role_id = '1' WHERE username = 'testuser1';
 UPDATE users SET role_id = '2' WHERE username = 'testuser2';
