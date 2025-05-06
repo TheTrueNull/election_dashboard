@@ -45,14 +45,24 @@ form {
     align-items: center;
 }
 
+form > label {
+    margin: 12px 0; /* top and bottom only */
+    display: block;
+    font-weight: bold;
+  }
+
+
 /* input fields */
 input {
-    width: 100%;
+    width: 80%;              /* Adjust width to center better */
+    max-width: 300px;        /* Prevent them from getting too wide */
     padding: 10px;
     margin: 8px 0;
     border: 1px solid #ccc;
     border-radius: 5px;
+    text-align: center;      /*center the text inside the boxes */
 }
+
 
 /* log in button*/
 button {

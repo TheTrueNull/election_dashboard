@@ -9,6 +9,8 @@ const db = require('./config/db');  // MySQL database connection
 require('dotenv').config();  // To load environment variables
 
 const app = express();
+app.use(express.json()); // important to parse JSON from POST
+app.use(express.urlencoded({ extended: true })); // to parse form data
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -20,6 +22,34 @@ const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret';
 
 // Serve static files (for signin and registration)
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.post('/api/register', async (req, res) => {
+  const { username, email, password } = req.body;
+
+  if (!username || !email || !password) {
+    return res.status(400).json({ success: false, message: 'Missing fields.' });
+  }
+
+  const emailPattern = /^[a-zA-Z0-9._%+-]+@(csun\.edu|my\.csun\.edu)$/;
+  if (!emailPattern.test(email)) {
+    return res.status(400).json({ success: false, message: 'Invalid email domain. Email must end with @csun.edu or @my.csun.edu' });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const sql = `INSERT INTO users (username, email, password, role_id, election_id) VALUES (?, ?, ?, 2, 1)`;
+    db.execute(sql, [username, email, hashedPassword], (err, results) => {
+      if (err) {
+        console.error('MySQL error:', err);
+        return res.status(500).json({ success: false, message: 'Database error.' });
+      }
+      return res.status(200).json({ success: true, message: 'Registration successful.' });
+    });
+  } catch (err) {
+    console.error('Server error:', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
 
 // Handle registration form submission
 app.post('/register_user', (req, res) => {

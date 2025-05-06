@@ -12,33 +12,33 @@
     <div id="particles-js"></div>
 
     <div class="card">
-        <h1>User Registration</h1>
-        <form action="/register_user" method="post">
-            <div>
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div>
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            <div>
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <div>
-                <label for="confirm_password">Confirm Password:</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-            </div>
-
-            <!-- Error or success messages -->
-            <div id="error-message" class="error" style="display: none;"></div>
-            <div id="success-message" class="success" style="display: none;"></div>
-
-            <button type="submit">Register</button>
+        <h2>User Registration</h2>
+        <form id="registrationForm">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" required>
+      
+          <label for="email">Email:</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            pattern="^[a-zA-Z0-9._%+-]+@(csun\.edu|my\.csun\.edu)$"
+            title="Email must end with @csun.edu or @my.csun.edu"
+          >
+          <small>Email must end with <strong>@csun.edu</strong> or <strong>@my.csun.edu</strong></small>
+      
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required>
+      
+          <label for="confirmPassword">Confirm Password:</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" required>
+      
+          <button type="submit">Register</button>
         </form>
-        <p>Already registered? <a href="/signin.html">Sign in here</a></p>
-    </div>
+        <p>Already registered? <a href="signin.html">Sign in here</a></p>
+      </div>
+      
 
     <!-- stats - count particles -->
     <div class="count-particles"> <span class="js-count-particles"></span></div>
@@ -63,6 +63,54 @@
             document.getElementById('success-message').textContent = decodeURIComponent(successMessage);
             document.getElementById('success-message').style.display = 'block';
         }
+        const emailInput = document.getElementById('email');
+        const errorMsg = document.getElementById('emailError');
+        emailInput.addEventListener('input', () => {
+            const valid = /^[a-zA-Z0-9._%+-]+@(csun\.edu|my\.csun\.edu)$/.test(emailInput.value);
+            errorMsg.style.display = valid ? 'none' : 'inline';
+        });
+        function validateEmail() {
+            const valid = /^[a-zA-Z0-9._%+-]+@(csun\.edu|my\.csun\.edu)$/.test(emailInput.value);
+            if (!valid) {
+                errorMsg.style.display = 'inline';
+                return false;
+            }
+            return true;
+        }
+        document.getElementById('registrationForm').addEventListener('submit', function (e) {
+    e.preventDefault(); // Prevent page reload
+
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
+
+    fetch('/api/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, email, password })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert("Registration successful! Redirecting...");
+          window.location.href = '/signin.html';
+        } else {
+          alert(data.message || "Registration failed.");
+        }
+      })
+      .catch(err => {
+        console.error("Error during registration:", err);
+        alert("Something went wrong. Try again later.");
+      });
+  });
     </script>
 </body>
 </html>
