@@ -17,6 +17,28 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+const transporter = nodemailer.createTransport({ //for email confirmation
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+function sendConfirmationEmail(toEmail, username) {
+  const mailOptions = {
+    from: `"Election System" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: 'Registration Successful',
+    html: `<p>Hello <strong>${username}</strong>,</p>
+           <p>You have successfully registered for the election system.</p>
+           <p>Visit the site to log in and vote!</p>`
+  };
+
+  return transporter.sendMail(mailOptions);
+}
+
 // JWT Secret from environment variables
 const jwtSecret = process.env.JWT_SECRET || 'your_jwt_secret';
 
@@ -38,18 +60,29 @@ app.post('/api/register', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const sql = `INSERT INTO users (username, email, password, role_id, election_id) VALUES (?, ?, ?, 2, 1)`;
+    
     db.execute(sql, [username, email, hashedPassword], (err, results) => {
       if (err) {
         console.error('MySQL error:', err);
         return res.status(500).json({ success: false, message: 'Database error.' });
       }
-      return res.status(200).json({ success: true, message: 'Registration successful.' });
+
+      //Send confirmation email
+      sendConfirmationEmail(email, username)
+        .then(() => {
+          res.status(200).json({ success: true, message: 'Registration successful.' });
+        })
+        .catch((emailErr) => {
+          console.error("Email error:", emailErr);
+          res.status(500).json({ success: false, message: "Registered, but failed to send email." });
+        });
     });
   } catch (err) {
     console.error('Server error:', err);
     return res.status(500).json({ success: false, message: 'Server error.' });
   }
 });
+
 
 // Handle registration form submission
 app.post('/register_user', (req, res) => {
