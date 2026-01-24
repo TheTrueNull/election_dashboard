@@ -199,10 +199,7 @@ Similar to IRV, but eliminates the candidate with the most last-place votes each
 
 *Dashboard with drag-and-drop ranking interface and dark mode support.*
 
-## License
-
-This project was created for educational purposes at CSUN.
 
 ---
 
-**Built with ❤️ for CSUN Elections**
+**Built for CSUN Elections**
