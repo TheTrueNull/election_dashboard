@@ -18,7 +18,6 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 
 const nodemailer = require('nodemailer');
-require('dotenv').config();
 const transporter = nodemailer.createTransport({ //for email confirmation
   service: 'gmail',
   auth: {
@@ -114,7 +113,7 @@ app.post('/register_user', (req, res) => {
 
       // Insert new user with default role_id = 2 (Voter)
       const query = 'INSERT INTO users (username, email, password, role_id, election_id) VALUES (?, ?, ?, ?, ?)';
-      db.query(query, [username, email, password, 2, 1], (err, result) => {
+      db.query(query, [username, email, hash, 2, 1], (err, result) => {
         if (err) {
           console.error('Error inserting new user:', err);
           return res.status(500).json({ message: 'Error inserting new user' });
@@ -236,15 +235,15 @@ app.post('/api/admin/update_candidates', verifyJWT, isAdmin, (req, res) => {
 });
 
 
-app.post('/api/admin/add_candidate', (req, res) => {
-  const { name, is_active } = req.body;
+app.post('/api/admin/add_candidate', verifyJWT, isAdmin, (req, res) => {
+  const { name, is_active, election_id } = req.body;
 
   if (!name) {
     return res.status(400).json({ message: 'Candidate name is required' });
   }
 
-  const query = 'INSERT INTO candidates (name, active) VALUES (?, ?)';
-  db.query(query, [name, is_active ? 1 : 0], (err, result) => {
+  const query = 'INSERT INTO candidates (name, active, election_id) VALUES (?, ?, ?)';
+  db.query(query, [name, is_active ? 1 : 0, election_id || 1], (err, result) => {
     if (err) {
       console.error('Error adding candidate:', err);
       return res.status(500).json({ message: 'Database error' });
@@ -332,7 +331,7 @@ function generateBallotId() {
 }
 
 
-app.get('/api/admin/elections', (req, res) => {
+app.get('/api/admin/elections', verifyJWT, isAdmin, (req, res) => {
   db.query('SELECT * FROM elections', (err, results) => {
     if (err) return res.status(500).json({ message: 'Error loading elections' });
     res.json(results);
@@ -656,9 +655,12 @@ function isAdmin(req, res, next) {
 }
 // Fetch all users (Admin only)
 app.get('/api/admin/users', verifyJWT, isAdmin, (req, res) => {
-  const query = 'SELECT id, username, email, is_candidate FROM users';
+  const query = 'SELECT id, username, email, is_candidate, election_id FROM users';
   db.query(query, (err, results) => {
-    if (err) throw err;
+    if (err) {
+      console.error('Error fetching users:', err);
+      return res.status(500).json({ message: 'Error fetching users' });
+    }
     res.json(results);
   });
 });
